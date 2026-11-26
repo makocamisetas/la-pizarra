@@ -163,6 +163,24 @@ details.box summary{cursor:pointer;font:700 17px 'Barlow Condensed',sans-serif;m
 .kw{font:400 clamp(28px,7vw,44px)/1.1 Anton,sans-serif;color:var(--yel);margin:10px 0 14px;overflow-wrap:anywhere;user-select:all}
 .kwline{margin:10px 0 0;color:var(--mute)}.kwline b{color:var(--yel);user-select:all}
 #fclub{margin-top:16px}
+.sec{margin:26px 0 10px;font-size:24px}.sec small{font:500 14px Barlow,sans-serif;color:var(--mute);margin-left:8px}
+.clubs{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,210px),1fr));gap:8px}
+.club{display:flex;align-items:center;gap:10px;text-align:left;min-height:52px;padding:8px 12px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel)}
+.club:hover{border-color:var(--yel)}.club:disabled{opacity:.4}
+.club i{flex:none;width:26px;height:26px;border-radius:50%;border:2px solid #fff}
+.club span{font:700 16px 'Barlow Condensed',sans-serif}.club em{display:block;font:500 13px Barlow,sans-serif;color:var(--mute);font-style:normal}
+.pl.dim{opacity:.28}.pl.hl .dot{box-shadow:0 0 0 5px rgba(255,210,63,.55)}
+.zband{position:absolute;left:3%;right:3%;border:2px dashed var(--yel);border-radius:10px;background:rgba(255,210,63,.12);pointer-events:none}
+.dir{position:absolute;right:8px;top:8px;font:700 12px 'Barlow Condensed',sans-serif;color:rgba(255,255,255,.7)}
+.field3{position:relative;aspect-ratio:16/10;width:100%;border-radius:14px;overflow:hidden;background:#0a1d13;box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.field3 canvas{position:absolute;inset:0;width:100%!important;height:100%!important;display:block}
+.goalfx{position:absolute;inset:0;display:grid;place-items:center;font:400 clamp(48px,12vw,110px) Anton,sans-serif;color:var(--yel);text-shadow:0 6px 24px rgba(0,0,0,.6);opacity:0;transform:scale(.6);transition:.25s;pointer-events:none;z-index:2}
+.goalfx.on{opacity:1;transform:scale(1)}
+.tag3{position:absolute;left:10px;top:10px;z-index:2;font:700 13px 'Barlow Condensed',sans-serif;background:rgba(5,20,12,.7);padding:3px 8px;border-radius:6px}
+.tl li{grid-template-columns:34px minmax(0,1fr) auto;user-select:none}
+.tl li.dr{cursor:grab}.tl li.drag{z-index:3;position:relative;cursor:grabbing;box-shadow:0 10px 24px rgba(0,0,0,.45);border-color:var(--yel);transition:none}
+.tl li:not(.drag){transition:transform .15s}
+.grip{display:grid;place-items:center;width:34px;height:44px;color:var(--mute);touch-action:none;cursor:grab}
 @media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
 </style>
 </head>
@@ -178,6 +196,7 @@ details.box summary{cursor:pointer;font:700 17px 'Barlow Condensed',sans-serif;m
 </header>
 <main id="app"></main>
 <div id="toast" role="status"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="data.js"></script>
 <script>
 {
@@ -336,16 +355,38 @@ app.addEventListener('submit',async e=>{
 });
 
 // ---------- EL INFILTRADO ----------
+const CLUBS=window.CLUBS||{};
+const ALLM=M.concat(window.CL||[]);
+ALLM.forEach(m=>{if(!m.id)m.id=hs(m.tm+'|'+m.s).toString(36)});
+const clubMatches=k=>ALLM.filter(m=>m.club===k);
 let IF=null;
-function infIntro(){intro('El Infiltrado',`En el once titular de un partido histórico hay un jugador que no fue titular ese día. Siempre es alguien que podría haber estado: del plantel o de esa época, y en su misma posición. Hay ${M.length} partidos.`,['Tocá al jugador que creés que es el infiltrado.','Si le pegás al primer intento son 100 puntos, al segundo 50 y al tercero 20.','Cada error te cuesta una vida. Las pistas restan 15 puntos.'],ART.infiltrado,[{a:'inf-mode',v:'diario',n:'Desafío del día',d:'5 partidos, los mismos para todos hoy.'},{a:'inf-mode',v:'racha',n:'Modo racha',d:'Partidos sin fin con 3 vidas en total. ¿Hasta dónde llegás?'},{a:'inf-mode',v:'pesadilla',n:'Modo pesadilla',d:'Hay 2 infiltrados por partido y 4 vidas. No sabés que hay otro hasta que encontrás el primero.'}],'inf')}
-function infStart(mode){const r=mode==='diario'?mul(hs('inf'+today)):Math.random;let q=shuf(M,r);if(mode!=='diario')q=unseenFirst(q,'inf');if(mode!=='racha')q=q.slice(0,5);IF={mode,q,k:0,score:0,res:[],glives:3,r,over:false};infNext()}
+function infIntro(){
+  const dd=dailyDone('inf');
+  app.innerHTML=`<div class="intro"><div><h2>El Infiltrado</h2><p class="lead">En el once titular de un partido real hay un jugador que no fue titular ese día. Siempre es alguien que pudo haber estado: del plantel, suspendido o lesionado, y en su misma posición.</p><ul><li>Tocá al jugador que creés que es el infiltrado.</li><li>Si le pegás al primer intento son 100 puntos, al segundo 50 y al tercero 20.</li><li>Cada error te cuesta una vida. Las pistas restan 15 puntos.</li></ul></div><div class="card" style="pointer-events:none">${ART.infiltrado}</div></div>
+  <h3 class="sec">Partidos históricos <small>${M.length} partidos de selecciones y Champions</small></h3>
+  <div class="modes">
+   <button class="mode" data-a="inf-mode" data-v="diario"><b>Desafío del día${dd!=null?` · ya jugado: ${dd} pts`:''}</b><span>${dd!=null?'Podés repetirlo, pero ya no suma puntos.':'5 partidos, los mismos para todos hoy.'}</span></button>
+   <button class="mode" data-a="inf-mode" data-v="racha"><b>Modo racha</b><span>Partidos sin fin con 3 vidas en total. ¿Hasta dónde llegás?</span></button>
+   <button class="mode" data-a="inf-mode" data-v="pesadilla"><b>Modo pesadilla</b><span>2 infiltrados por partido y 4 vidas. No sabés que hay otro hasta que encontrás el primero.</span></button>
+  </div>
+  <h3 class="sec">Por club <small>los 30 de la Liga Profesional</small></h3>
+  <div class="clubs">${Object.entries(CLUBS).map(([k,c])=>{const n=clubMatches(k).length;return `<button class="club" data-a="inf-club" data-v="${k}" ${n?'':'disabled'}><i style="background:${c.c}"></i><span>${esc(c.n)}<em>${n} partido${n==1?'':'s'}</em></span></button>`}).join('')}</div>`;
+}
+function infStart(mode,club){
+  const r=mode==='diario'?mul(hs('inf'+today)):Math.random;
+  let q;
+  if(mode==='club')q=shuf(clubMatches(club));
+  else{q=shuf(M,r);if(mode!=='diario')q=unseenFirst(q,'inf');if(mode==='pesadilla')q=q.filter(m=>m.inf.length>1);if(mode!=='racha')q=q.slice(0,5)}
+  IF={mode,club,q,k:0,score:0,res:[],glives:3,r,over:false,sum:null};infNext();
+}
 function infNext(){
   if(IF.mode==='racha'&&IF.k>0&&IF.k%IF.q.length===0)IF.q=shuf(IF.q);
   const m=IF.q[IF.k%IF.q.length],two=IF.mode==='pesadilla',r=IF.mode==='diario'?IF.r:Math.random;
   markSeen('inf',m.id);
-  const infs=two?m.inf:[m.inf[Math.floor(r()*2)]];
+  const infs=two?m.inf.slice(0,2):[m.inf[Math.floor(r()*m.inf.length)]];
   const L=m.l.split('|'),P=[];
-  L.forEach((ln,li)=>{const ns=ln.split(',');ns.forEach((n,j)=>P.push({n,z:li==0?0:li==1?1:li==L.length-1?3:2,x:(j+1)/(ns.length+1)*100,y:90-li*(76/(L.length-1)),s:''}))});
+  // Cada línea está escrita de derecha a izquierda (lateral derecho primero), vista desde el equipo que ataca hacia arriba.
+  L.forEach((ln,li)=>{const ns=ln.split(',');ns.forEach((n,j)=>P.push({n,z:li==0?0:li==1?1:li==L.length-1?3:2,x:100-(j+1)/(ns.length+1)*100,y:90-li*(76/(L.length-1)),s:''}))});
   infs.forEach(f=>{const p=P.find(p=>p.n===f.o);p.real=f.o;p.n=f.i;p.inf=1;p.note=f.x||'Estaba en el plantel, pero no fue titular ese día.'});
   IF.cur={m,P,lives:two?4:3,max:two?4:3,wrong:0,hints:[],left:infs.length,found:0,done:false,pts:0,msg:'',mc:''};
   infRender();
@@ -358,7 +399,7 @@ function infPick(i){
     c.msg='¡Lo agarraste! Pero ojo: hay otro infiltrado.';c.mc='good';
   }else{p.s='ok';c.wrong++;if(IF.mode==='racha')IF.glives--;else c.lives--;
     if(curLives()<=0)return infFinish(false);
-    c.msg=`${p.n} jugó ese partido. Te quedan ${curLives()} vida${curLives()==1?'':'s'}.`;c.mc='bad';
+    c.msg=`${p.n} fue titular ese día. Te quedan ${curLives()} vida${curLives()==1?'':'s'}.`;c.mc='bad';
   }
   infRender();
 }
@@ -372,39 +413,45 @@ function infFinish(win){
 }
 function infHint(h){
   const c=IF.cur;if(c.done||c.hints.includes(h))return;c.hints.push(h);
-  if(h==='tarjeta'){shuf(c.P.filter(p=>!p.inf&&!p.s)).slice(0,3).forEach(p=>p.s='yel');c.msg='Tarjeta amarilla: los 3 marcados en amarillo jugaron.';c.mc=''}
+  if(h==='tarjeta'){shuf(c.P.filter(p=>!p.inf&&!p.s)).slice(0,3).forEach(p=>p.s='yel');c.msg='Tarjeta amarilla: los 3 marcados en amarillo fueron titulares.';c.mc=''}
+  if(h==='zona'){const z=c.P.find(p=>p.inf&&!p.s);c.msg=z?`El infiltrado es ${ZN[z.z]}: te lo marcamos en la cancha.`:'';c.mc=''}
+  if(h==='resultado'){c.msg=`Resultado: ${c.m.t}.`;c.mc=''}
   infRender();
 }
-function infNextBtn(){const fin=IF.mode==='racha'?IF.over:IF.k+1>=IF.q.length;if(fin)return infSummary();IF.k++;infNext()}
+const infLast=()=>IF.mode==='racha'?IF.over:IF.k+1>=IF.q.length;
+function infNextBtn(){if(infLast())return infSummary();IF.k++;infNext()}
 function infSummary(){
   const solved=IF.res.filter(x=>x!=='🔴').length;
   const counted=record('inf',IF.score,{daily:IF.mode==='diario',racha:IF.mode==='racha'?solved:null});
   const head=IF.mode==='racha'?`Racha: ${solved} partido${solved==1?'':'s'}`:`${IF.score} puntos`;
-  const txt=`La Pizarra · El Infiltrado${IF.mode==='diario'?' · '+today:IF.mode==='pesadilla'?' · Pesadilla':' · Racha'}\n${IF.res.join('')}  ${head}`;
-  IF.sum=`<div class="box" style="max-width:560px;margin:20px auto;text-align:center"><p class="info">Terminó el juego</p><div class="big">${esc(head)}</div><p style="font-size:28px;margin:10px 0">${IF.res.join(' ')}</p>${IF.mode==='racha'&&ACC.P?`<p class="info">Tu récord: <b>${ACC.P.best.racha}</b></p>`:''}${counted===false?'<p class="info">Ya habías jugado el desafío de hoy: esta vez no suma.</p>':''}${saveCta()}${shareBox(txt)}<div class="row" style="justify-content:center;margin-top:14px"><button class="btn" data-a="inf-mode" data-v="${IF.mode}">Jugar de nuevo</button><button class="btn" data-a="inf-intro">Cambiar modo</button></div></div>`;
+  const lbl=IF.mode==='diario'?' · '+today:IF.mode==='pesadilla'?' · Pesadilla':IF.mode==='club'?' · '+(CLUBS[IF.club]?CLUBS[IF.club].n:''):' · Racha';
+  const txt=`La Pizarra · El Infiltrado${lbl}\n${IF.res.join('')}  ${head}`;
+  IF.sum=`<div class="box" style="max-width:560px;margin:20px auto;text-align:center"><p class="info">Terminó el juego</p><div class="big">${esc(head)}</div><p style="font-size:28px;margin:10px 0">${IF.res.join(' ')}</p>${IF.mode==='racha'&&ACC.P?`<p class="info">Tu récord: <b>${ACC.P.best.racha}</b></p>`:''}${counted===false?'<p class="info">Ya habías jugado el desafío de hoy: esta vez no suma.</p>':''}${saveCta()}${shareBox(txt)}<div class="row" style="justify-content:center;margin-top:14px">${IF.mode==='club'?`<button class="btn" data-a="inf-club" data-v="${IF.club}">Jugar de nuevo</button>`:`<button class="btn" data-a="inf-mode" data-v="${IF.mode}">Jugar de nuevo</button>`}<button class="btn" data-a="inf-intro">Cambiar modo</button></div></div>`;
   app.innerHTML=IF.sum;
 }
 function infRender(){
   if(IF.sum){app.innerHTML=IF.sum;return}
   const c=IF.cur,m=c.m,L=curLives(),mx=IF.mode==='racha'?3:c.max;
   const prog=IF.mode==='racha'?`Racha <b>${IF.res.filter(x=>x!=='🔴').length}</b>`:`Partido <b>${IF.k+1}/${IF.q.length}</b>`;
-  const zoneInf=c.P.find(p=>p.inf&&!p.s);
+  const zoneInf=c.P.find(p=>p.inf&&!p.s),zon=c.hints.includes('zona')&&zoneInf&&!c.done?zoneInf.z:null;
   const H=[
-   {h:'tarjeta',ic:'',n:'Tarjeta amarilla',d:'Te marca 3 jugadores que sí jugaron.'},
-   {h:'resultado',ic:'r',n:'Resultado',d:c.hints.includes('resultado')?`${m.t}. Goles: ${m.g}.`:'Te muestra el resultado y los goleadores.'},
-   {h:'zona',ic:'z',n:'Zona',d:c.hints.includes('zona')?(zoneInf?`El infiltrado es ${ZN[zoneInf.z]}.`:'Ya los encontraste.'):'Te dice en qué línea está el infiltrado.'}];
+   {h:'tarjeta',ic:'',n:'Tarjeta amarilla',d:'Te marca 3 jugadores que sí fueron titulares.'},
+   {h:'resultado',ic:'r',n:'Resultado',d:c.hints.includes('resultado')?m.t:'Te muestra cómo terminó el partido.'},
+   {h:'zona',ic:'z',n:'Zona',d:c.hints.includes('zona')?(zoneInf?`Está entre los ${['arqueros','defensores','mediocampistas','delanteros'][zoneInf.z]}.`:'Ya los encontraste.'):'Te marca en la cancha la línea donde está.'}];
+  const zoneBand=zon!=null?(()=>{const ys=c.P.filter(p=>p.z===zon).map(p=>p.y);const y0=Math.min(...ys)-6,y1=Math.max(...ys)+7;return `<div class="zband" style="top:${y0}%;height:${y1-y0}%"></div>`})():'';
+  const club=IF.mode==='club'&&CLUBS[IF.club]?CLUBS[IF.club].n:'';
   app.innerHTML=`<div class="bar"><div class="score"><span>${prog}</span><span>Puntos <b>${IF.score}</b></span><span>Vidas ${lives(L,mx)}</span></div><button class="btn" data-a="inf-intro">Modos</button></div>
-  <div class="grid2"><div><div class="head"><small>${esc(m.s)}</small><h2>${esc(m.tm)}</h2></div>
-   <div class="pitch">${PITCH_V}${c.P.map((p,i)=>`<button class="pl ${p.s}" style="left:${p.x}%;top:${p.y}%;--c:${m.c}" data-a="inf-pick" data-v="${i}" aria-label="${esc(p.n)}"><span class="dot">${p.s==='ok'?'✓':p.s==='inf'||p.s==='rev'?'✗':''}</span><span class="nm">${esc(p.n)}</span></button>`).join('')}</div></div>
+  <div class="grid2"><div><div class="head"><small>${club?esc(club)+' · ':''}${esc(m.s)}</small><h2>${esc(m.tm)}</h2></div>
+   <div class="pitch">${PITCH_V}${zoneBand}${c.P.map((p,i)=>`<button class="pl ${p.s} ${zon!=null?(p.z===zon?'hl':'dim'):''}" style="left:${p.x}%;top:${p.y}%;--c:${m.c||(CLUBS[m.club]?CLUBS[m.club].c:'#888')}" data-a="inf-pick" data-v="${i}" aria-label="${esc(p.n)}"><span class="dot">${p.s==='ok'?'✓':p.s==='inf'||p.s==='rev'?'✗':''}</span><span class="nm">${esc(p.n)}</span></button>`).join('')}<span class="dir">ataca ▲</span></div></div>
    <div class="side"><div class="msg ${c.mc}" aria-live="polite">${esc(c.msg||(IF.mode==='pesadilla'?'¿Quién no fue titular en este partido? Puede haber más de uno.':'¿Quién no fue titular en este partido?'))}</div>
-    ${c.done?`<div class="box reveal"><h3>${esc(m.t)}</h3><p class="info">Goles: ${esc(m.g)}</p>${c.P.filter(p=>p.inf).map(p=>`<p><b>${esc(p.n)}</b> no fue titular: en su lugar jugó <b>${esc(p.real)}</b>. ${esc(p.note)}</p>`).join('')}<button class="btn pri" style="width:100%;margin-top:8px" data-a="inf-next">${(IF.mode==='racha'?IF.over:IF.k+1>=IF.q.length)?'Ver resultado final':'Siguiente partido'}</button></div>`
+    ${c.done?`<div class="box reveal"><h3>${esc(m.t)}</h3><p class="info">Goles: ${esc(m.g)}</p>${c.P.filter(p=>p.inf).map(p=>`<p><b>${esc(p.n)}</b> no fue titular: en su lugar jugó <b>${esc(p.real)}</b>. ${esc(p.note)}</p>`).join('')}<button class="btn pri" style="width:100%;margin-top:8px" data-a="inf-next">${infLast()?'Ver resultado final':'Siguiente partido'}</button></div>`
     :`<div class="box"><h3>Pistas (−15 pts c/u)</h3><div class="hints">${H.map(x=>`<button class="hint" data-a="inf-hint" data-v="${x.h}" ${c.hints.includes(x.h)?'disabled':''}><i class="ic ${x.ic}"></i><span>${x.n}<em>${esc(x.d)}</em></span></button>`).join('')}</div></div>`}
    </div></div>`;
 }
 
-// ---------- LA JUGADA ----------
+// ---------- LA JUGADA (3D) ----------
 let JG=null;
-function jgIntro(){intro('La Jugada',`Ves el recorrido de la pelota de un gol histórico, sin nombres. ¿De quién es el gol? Hay ${G.length} goles.`,['Primero ves solo el final de la jugada.','Las pistas muestran la jugada entera, el torneo y el rival, pero cada una resta 30 puntos.','Elegí entre 4 opciones. Si acertás sin pistas, son 100 puntos.'],ART.jugada,[{a:'jg-mode',v:'diario',n:'Desafío del día',d:'5 goles, los mismos para todos hoy.'},{a:'jg-mode',v:'libre',n:'Modo libre',d:'10 goles, primero los que todavía no viste.'}],'jg')}
+function jgIntro(){intro('La Jugada',`Mirá en 3D cómo se construyó un gol histórico, sin nombres ni camisetas. ¿De quién es el gol? Hay ${G.length} goles.`,['Primero ves solo el final de la jugada.','Las pistas muestran la jugada entera, el torneo y el rival, pero cada una resta 30 puntos.','Elegí entre 4 opciones. Si acertás sin pistas, son 100 puntos.'],ART.jugada,[{a:'jg-mode',v:'diario',n:'Desafío del día',d:'5 goles, los mismos para todos hoy.'},{a:'jg-mode',v:'libre',n:'Modo libre',d:'10 goles, primero los que todavía no viste.'}],'jg')}
 function jgStart(mode){const r=mode==='diario'?mul(hs('jg'+today)):Math.random;let q=shuf(G,r);if(mode!=='diario')q=unseenFirst(q,'jg');q=q.slice(0,mode==='diario'?5:10);JG={mode,q,k:0,score:0,res:[],r};jgRound()}
 function jgRound(){
   const g=JG.q[JG.k],r=JG.r;markSeen('jg',g.id);
@@ -412,32 +459,176 @@ function jgRound(){
   for(const x of [...shuf(G.filter(x=>x.gr===g.gr),r),...shuf(G,r)]){if(pick.length>=3)break;if(!names.has(x.w)){names.add(x.w);pick.push(x)}}
   JG.cur={g,h:0,done:false,pick:null,opts:shuf([g,...pick],r)};JG.sum=null;jgRender();
 }
-function jgSegs(){const g=JG.cur.g,all=g.p.slice(1).map((pt,i)=>({a:g.p[i],b:pt,t:pt[2]}));return JG.cur.h>=1||JG.cur.done||all.length<=2?all:all.slice(-2)}
+const jgFull=()=>JG.cur.h>=1||JG.cur.done;
+function jgSegs(){const g=JG.cur.g,all=g.p.slice(1).map((pt,i)=>({a:g.p[i],b:pt,t:pt[2]}));return jgFull()||all.length<=2?all:all.slice(-2)}
 function jgRender(){
   if(JG.sum){app.innerHTML=JG.sum;return}
-  const c=JG.cur,g=c.g,segs=jgSegs();
-  const segSvg=segs.map((s,i)=>`<line id="sg${i}" x1="${s.a[0]}" y1="${s.a[1]}" x2="${s.b[0]}" y2="${s.b[1]}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" stroke="${s.t==='s'?'#ef4b4b':s.t==='c'?'#ffd23f':'#f2efe4'}" stroke-width="${s.t==='s'?1.1:.7}" stroke-linecap="round"/>`).join('');
-  const dots=segs.filter(s=>s.t!=='s').map(s=>`<circle cx="${s.b[0]}" cy="${s.b[1]}" r="1.3" fill="#f2efe4" stroke="#0c2418" stroke-width=".3"/>`).join('')+`<circle cx="${segs[0].a[0]}" cy="${segs[0].a[1]}" r="1.3" fill="#f2efe4" stroke="#0c2418" stroke-width=".3"/>`;
+  const c=JG.cur,g=c.g,use3d=j3Ready();
+  let view;
+  if(use3d)view=`<div class="field3" id="f3"><div class="goalfx" id="gfx">¡GOL!</div><div class="tag3">${jgFull()?'Jugada completa':'Solo el final'}</div></div>`;
+  else{const segs=jgSegs();const segSvg=segs.map((s,i)=>`<line id="sg${i}" x1="${s.a[0]}" y1="${s.a[1]}" x2="${s.b[0]}" y2="${s.b[1]}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" stroke="${s.t==='s'?'#ef4b4b':s.t==='c'?'#ffd23f':'#f2efe4'}" stroke-width="${s.t==='s'?1.1:.7}" stroke-linecap="round"/>`).join('');
+    view=`<div class="field"><svg viewBox="-1 -1 108 70" aria-label="Recorrido de la pelota">${PITCH_H}${segSvg}<circle id="ball" r="1.5" fill="#fff" stroke="#000" stroke-width=".3" cx="${segs[0].a[0]}" cy="${segs[0].a[1]}"/></svg></div>`}
   const H=[{h:1,n:'Ver la jugada entera',d:'Muestra la jugada desde el arranque.'},{h:2,n:'Torneo',d:c.h>=2||c.done?g.tor:'Te dice el torneo y el año.'},{h:3,n:'Rival',d:c.h>=3||c.done?g.riv:'Te dice contra quién fue.'}];
   app.innerHTML=`<div class="bar"><div class="score"><span>Gol <b>${JG.k+1}/${JG.q.length}</b></span><span>Puntos <b>${JG.score}</b></span></div><button class="btn" data-a="jg-intro">Modos</button></div>
-  <div class="grid2 jg"><div><div class="head"><small>${c.h>=1||c.done?'Jugada completa':'Solo el final de la jugada'}</small><h2>¿De quién es este gol?</h2></div>
-  <div class="field"><svg viewBox="-1 -1 108 70" aria-label="Recorrido de la pelota">${PITCH_H}${segSvg}${dots}<circle id="ball" r="1.5" fill="#fff" stroke="#000" stroke-width=".3" cx="${segs[0].a[0]}" cy="${segs[0].a[1]}"/></svg></div>
-  <div class="row" style="margin:10px 0 4px;justify-content:space-between;align-items:center"><p class="info"><span style="color:#f2efe4">━</span> pase · <span style="color:#ffd23f">━</span> conducción · <span style="color:#ef4b4b">━</span> remate. El arco está a la derecha.</p><button class="btn" data-a="jg-replay">Repetir</button></div></div>
+  <div class="grid2 jg"><div><div class="head"><small>${jgFull()?'Jugada completa':'Solo el final de la jugada'}</small><h2>¿De quién es este gol?</h2></div>
+  ${view}
+  <div class="row" style="margin:10px 0 4px;justify-content:space-between;align-items:center"><p class="info">${use3d?'Amarillo: el equipo que hace el gol. Rojo: los rivales.':'<span style="color:#f2efe4">━</span> pase · <span style="color:#ffd23f">━</span> conducción · <span style="color:#ef4b4b">━</span> remate.'}</p><button class="btn" data-a="jg-replay">Repetir</button></div></div>
   <div class="side"><div class="msg ${c.done?(c.pick===g?'good':'bad'):''}" aria-live="polite">${c.done?(c.pick===g?`¡Golazo! +${c.pts} puntos.`:`No. Era el gol de ${esc(g.w)}.`):'Elegí una opción:'}</div>
    <div class="opts">${c.opts.map((o,i)=>`<button class="opt ${c.done?(o===g?'right':o===c.pick?'wrong':''):''}" data-a="jg-opt" data-v="${i}" ${c.done?'disabled':''}><kbd>${i+1}</kbd>${esc(o.w)}</button>`).join('')}</div>
    ${c.done?`<div class="box reveal"><h3>${esc(g.w)} vs. ${esc(g.riv)}</h3><p class="info">${esc(g.tor)}</p><p>${esc(g.d)}</p><button class="btn pri" style="width:100%;margin-top:6px" data-a="jg-next">${JG.k+1>=JG.q.length?'Ver resultado final':'Siguiente gol'}</button></div>`:''}
-   <div class="box"><h3>Pistas (−30 pts c/u)</h3><div class="hints">${H.map(x=>`<button class="hint" data-a="jg-hint" data-v="${x.h}" ${c.h>=x.h||c.done||x.h!==c.h+1?'disabled':''}><i class="ic ${x.h==1?'z':x.h==2?'r':''}"></i><span>${x.n}<em>${esc(x.d)}</em></span></button>`).join('')}</div><p class="fine">Recorridos dibujados a mano, aproximados.</p></div><p class="fine kbd">Atajos: <kbd>1</kbd>–<kbd>4</kbd> para elegir, <kbd>Enter</kbd> para seguir, <kbd>R</kbd> para repetir.</p></div></div>`;
+   <div class="box"><h3>Pistas (−30 pts c/u)</h3><div class="hints">${H.map(x=>`<button class="hint" data-a="jg-hint" data-v="${x.h}" ${c.h>=x.h||c.done||x.h!==c.h+1?'disabled':''}><i class="ic ${x.h==1?'z':x.h==2?'r':''}"></i><span>${x.n}<em>${esc(x.d)}</em></span></button>`).join('')}</div><p class="fine">Jugadas recreadas a mano: el recorrido es aproximado.</p></div><p class="fine kbd">Atajos: <kbd>1</kbd>–<kbd>4</kbd> para elegir, <kbd>Enter</kbd> para seguir, <kbd>R</kbd> para repetir.</p></div></div>`;
   jgPlay();
 }
 function jgPlay(){
-  cancelAnimationFrame(anim);const ball=document.getElementById('ball');if(!ball)return;const segs=jgSegs();
+  cancelAnimationFrame(anim);
+  if(document.getElementById('f3'))return j3Play();
+  const ball=document.getElementById('ball');if(!ball)return;const segs=jgSegs();
   const len=s=>Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);
   const dur=segs.map(s=>Math.max(260,len(s)*(s.t==='c'?55:s.t==='s'?10:20)));const tot=dur.reduce((a,b)=>a+b,0);
   const els=segs.map((_,i)=>document.getElementById('sg'+i));
-  if(matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(e=>e.setAttribute('stroke-dashoffset',0));const l=segs[segs.length-1].b;ball.setAttribute('cx',l[0]);ball.setAttribute('cy',l[1]);return}
   let t0=null;const step=ts=>{if(!document.body.contains(ball))return;if(t0===null)t0=ts;let t=ts-t0;if(t>tot+1400){t0=ts;t=0}
     let acc=0;segs.forEach((s,i)=>{const p=Math.min(1,Math.max(0,(t-acc)/dur[i]));els[i].setAttribute('stroke-dashoffset',1-p);if(t>=acc&&t<acc+dur[i]||(i===segs.length-1&&t>=tot)){ball.setAttribute('cx',s.a[0]+(s.b[0]-s.a[0])*p);ball.setAttribute('cy',s.a[1]+(s.b[1]-s.a[1])*p)}acc+=dur[i]});
     anim=requestAnimationFrame(step)};
+  anim=requestAnimationFrame(step);
+}
+// --- motor 3D (three.js) ---
+const J3={ok:null,r:null,ro:null,scene:null,cam:null};
+function j3Ready(){
+  if(J3.ok!==null)return J3.ok;
+  try{if(!window.THREE)throw 0;const t=document.createElement('canvas');if(!(t.getContext('webgl')||t.getContext('experimental-webgl')))throw 0;
+    J3.r=new THREE.WebGLRenderer({antialias:true});J3.r.setPixelRatio(Math.min(window.devicePixelRatio||1,2));J3.r.outputEncoding=THREE.sRGBEncoding;J3.ok=true}
+  catch(e){J3.ok=false}
+  return J3.ok;
+}
+let FTEX=null,CROWD=null;
+function fieldTexture(){
+  if(FTEX)return FTEX;const s=10,M0=6,c=document.createElement('canvas');c.width=(105+2*M0)*s;c.height=(68+2*M0)*s;const g=c.getContext('2d');
+  const n=18;for(let i=0;i<n;i++){g.fillStyle=i%2?'#2f8c48':'#287c3f';g.fillRect(i*c.width/n,0,c.width/n+1,c.height)}
+  const X=x=>(x+M0)*s,Y=y=>(y+M0)*s;g.strokeStyle='rgba(255,255,255,.92)';g.lineWidth=2.4;
+  const R=(x,y,w,h)=>g.strokeRect(X(x),Y(y),w*s,h*s);
+  R(0,0,105,68);g.beginPath();g.moveTo(X(52.5),Y(0));g.lineTo(X(52.5),Y(68));g.stroke();
+  g.beginPath();g.arc(X(52.5),Y(34),9.15*s,0,Math.PI*2);g.stroke();
+  R(0,13.84,16.5,40.32);R(88.5,13.84,16.5,40.32);R(0,24.84,5.5,18.32);R(99.5,24.84,5.5,18.32);
+  g.beginPath();g.arc(X(94),Y(34),9.15*s,Math.PI*0.705,Math.PI*1.295);g.stroke();
+  g.beginPath();g.arc(X(11),Y(34),9.15*s,-Math.PI*0.295,Math.PI*0.295);g.stroke();
+  g.fillStyle='#fff';[[11,34],[94,34],[52.5,34]].forEach(([x,y])=>{g.beginPath();g.arc(X(x),Y(y),3,0,7);g.fill()});
+  FTEX=new THREE.CanvasTexture(c);FTEX.anisotropy=8;FTEX.encoding=THREE.sRGBEncoding;FTEX.userData={w:105+2*M0,h:68+2*M0};return FTEX;
+}
+function crowdTexture(){
+  if(CROWD)return CROWD;const c=document.createElement('canvas');c.width=1024;c.height=128;const g=c.getContext('2d');
+  g.fillStyle='#17261d';g.fillRect(0,0,c.width,c.height);const cols=['#d9d2c0','#7fb2e5','#e8c547','#c94040','#9aa59c','#ffffff','#3a5f8f'];
+  for(let i=0;i<5200;i++){g.fillStyle=cols[(Math.random()*cols.length)|0];g.globalAlpha=.35+Math.random()*.5;g.fillRect(Math.random()*c.width,Math.random()*c.height,2,2)}
+  CROWD=new THREE.CanvasTexture(c);CROWD.wrapS=THREE.RepeatWrapping;CROWD.repeat.set(3,1);CROWD.encoding=THREE.sRGBEncoding;return CROWD;
+}
+function mkPlayer(shirt,shorts){
+  const g=new THREE.Group(),m=c=>new THREE.MeshLambertMaterial({color:c});
+  const legL=new THREE.Mesh(new THREE.CylinderGeometry(.11,.09,.8,6),m('#d9ac85'));legL.position.set(0,.42,.13);
+  const legR=legL.clone();legR.position.z=-.13;
+  const sh=new THREE.Mesh(new THREE.CylinderGeometry(.27,.25,.3,10),m(shorts));sh.position.y=.92;
+  const body=new THREE.Mesh(new THREE.CylinderGeometry(.3,.26,.64,10),m(shirt));body.position.y=1.38;
+  const head=new THREE.Mesh(new THREE.SphereGeometry(.18,12,10),m('#c99572'));head.position.y=1.9;
+  const sd=new THREE.Mesh(new THREE.CircleGeometry(.55,16),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.3,depthWrite:false}));sd.rotation.x=-Math.PI/2;sd.position.y=.03;
+  const inner=new THREE.Group();inner.add(legL,legR,sh,body,head);g.add(inner,sd);g.userData={inner,legL,legR};g.scale.setScalar(1.25);return g;
+}
+function mkGoal(){
+  const g=new THREE.Group(),pm=new THREE.MeshLambertMaterial({color:'#ffffff'}),r=.08;
+  [-3.66,3.66].forEach(z=>{const p=new THREE.Mesh(new THREE.CylinderGeometry(r,r,2.44,8),pm);p.position.set(52.5,1.22,z);g.add(p)});
+  const bar=new THREE.Mesh(new THREE.CylinderGeometry(r,r,7.32,8),pm);bar.rotation.x=Math.PI/2;bar.position.set(52.5,2.44,0);g.add(bar);
+  const nm=new THREE.MeshBasicMaterial({color:'#ffffff',wireframe:true,transparent:true,opacity:.38});
+  const back=new THREE.Mesh(new THREE.PlaneGeometry(7.32,2.44,22,8),nm);back.rotation.y=Math.PI/2;back.position.set(54.6,1.22,0);g.add(back);
+  const top=new THREE.Mesh(new THREE.PlaneGeometry(2.1,7.32,6,22),nm);top.rotation.x=-Math.PI/2;top.position.set(53.55,2.44,0);g.add(top);
+  [-3.66,3.66].forEach(z=>{const s=new THREE.Mesh(new THREE.PlaneGeometry(2.1,2.44,6,8),nm);s.position.set(53.55,1.22,z);g.add(s)});
+  back.userData.base=Float32Array.from(back.geometry.attributes.position.array);g.userData.back=back;return g;
+}
+// Línea de tiempo de una jugada: segmentos, dueños de la pelota, rivales y arquero.
+function j3Timeline(g){
+  if(g._tl)return g._tl;const p=g.p;
+  const segs=p.slice(1).map((b,i)=>({a:p[i],b,t:b[2]}));let T=0;
+  segs.forEach(s=>{const dx=s.b[0]-s.a[0],dy=s.b[1]-s.a[1];s.len=Math.hypot(dx,dy)||1;s.dir=[dx/s.len,dy/s.len];
+    const v=s.t==='c'?8.2:s.t==='s'?27:19;s.d=Math.max(s.t==='s'?.45:.55,s.len/v);s.t0=T;T+=s.d;s.t1=T;
+    s.h=s.t==='c'?0:s.t==='s'?(s.len>24?2.6:s.len>12?1.4:.7):(s.len>24?Math.min(10,s.len*.17):s.len>14?1.2:.25)});
+  const owners=[];let cur={keys:[{t:0,x:p[0][0],y:p[0][1]}],tLast:0,carry:[]};owners.push(cur);
+  segs.forEach(s=>{
+    if(s.t==='c'){if(cur.keys[cur.keys.length-1].t<s.t0)cur.keys.push({t:s.t0,x:s.a[0],y:s.a[1]});cur.keys.push({t:s.t1,x:s.b[0],y:s.b[1]});cur.carry.push(s);cur.tLast=s.t1}
+    else if(s.t==='p'){cur.tLast=Math.max(cur.tLast,s.t0);s.prev=cur;
+      const n={keys:[{t:Math.max(0,s.t1-1.7),x:s.b[0]-s.dir[0]*5,y:s.b[1]-s.dir[1]*5},{t:s.t1,x:s.b[0],y:s.b[1]}],tLast:s.t1,carry:[]};owners.push(n);cur=n}
+    else{cur.tLast=Math.max(cur.tLast,s.t0);s.prev=cur}
+  });
+  const defs=[];let side=1;
+  segs.forEach(s=>{if(s.t==='c'&&s.len>5){const mx=(s.a[0]+s.b[0])/2,my=(s.a[1]+s.b[1])/2;side=-side;
+    defs.push({hx:mx+s.dir[0]*2.5-s.dir[1]*2.2*side,hy:my+s.dir[1]*2.5+s.dir[0]*2.2*side,tPass:s.t0+s.d*.62,seg:s,side})}});
+  const shot=segs[segs.length-1].t==='s'?segs[segs.length-1]:null;
+  g._tl={segs,owners,defs,T,shot};return g._tl;
+}
+function j3Ball(tl,t){
+  const S=tl.segs;if(t<=S[0].t0)return {x:S[0].a[0],y:S[0].a[1],h:.3};
+  for(const s of S){if(t<=s.t1){const k=(t-s.t0)/s.d,x=s.a[0]+(s.b[0]-s.a[0])*k,y=s.a[1]+(s.b[1]-s.a[1])*k;
+    const h=s.t==='c'?.3+Math.abs(Math.sin(k*s.len*.9))*.18:.3+4*s.h*k*(1-k)+(s.t==='s'?k*.9:0);return {x,y,h,s,k}}}
+  const L=S[S.length-1],e=Math.min(1,(t-tl.T)/.4);
+  if(tl.shot&&L.b[0]>=104.5)return {x:L.b[0]+1.7*(1-(1-e)*(1-e)),y:L.b[1],h:Math.max(.3,1.2-e*.6),goal:true};
+  return {x:L.b[0],y:L.b[1],h:.3};
+}
+function j3Owner(o,t){
+  const K=o.keys;if(t<=K[0].t)return {x:K[0].x,y:K[0].y,mv:0};
+  for(let i=1;i<K.length;i++){if(t<=K[i].t){const a=K[i-1],b=K[i],k=(t-a.t)/Math.max(.001,b.t-a.t);return {x:a.x+(b.x-a.x)*k,y:a.y+(b.y-a.y)*k,mv:1,dx:b.x-a.x,dy:b.y-a.y}}}
+  const L=K[K.length-1];return {x:L.x,y:L.y,mv:0};
+}
+function j3Build(g,full){
+  const old=J3.scene;if(old)old.traverse(o=>{if(o.geometry)o.geometry.dispose();if(o.material&&o.material.map!==FTEX&&o.material.map!==CROWD)o.material.dispose()});
+  const tl=j3Timeline(g),scene=new THREE.Scene();scene.background=new THREE.Color('#0a1d13');scene.fog=new THREE.Fog('#0a1d13',95,190);
+  scene.add(new THREE.HemisphereLight('#eaf6ff','#1d4d2a',1.0));const dl=new THREE.DirectionalLight('#ffffff',.65);dl.position.set(-30,60,45);scene.add(dl);
+  const ft=fieldTexture();const fld=new THREE.Mesh(new THREE.PlaneGeometry(ft.userData.w,ft.userData.h),new THREE.MeshLambertMaterial({map:ft}));fld.rotation.x=-Math.PI/2;scene.add(fld);
+  const gr=new THREE.Mesh(new THREE.PlaneGeometry(420,420),new THREE.MeshLambertMaterial({color:'#123a22'}));gr.rotation.x=-Math.PI/2;gr.position.y=-.03;scene.add(gr);
+  const ct=crowdTexture(),stand=new THREE.MeshLambertMaterial({map:ct}),roof=new THREE.MeshLambertMaterial({color:'#0e1913'});
+  [[0,-52,170,0],[78,0,120,Math.PI/2],[-78,0,120,-Math.PI/2]].forEach(([x,z,w,ry])=>{const st=new THREE.Mesh(new THREE.PlaneGeometry(w,18),stand);st.position.set(x,9,z);st.rotation.y=ry;st.rotation.x=0;
+    const tilt=new THREE.Group();tilt.add(st);scene.add(tilt);const rf=new THREE.Mesh(new THREE.BoxGeometry(w,1,10),roof);rf.position.set(x,19,z+(z<0?-3:0));rf.rotation.y=ry;scene.add(rf)});
+  const gl=new THREE.MeshBasicMaterial({color:'#fffbe6'});[[-60,-50],[60,-50],[-60,50],[60,50]].forEach(([x,z])=>{const l=new THREE.Mesh(new THREE.SphereGeometry(1.3,10,8),gl);l.position.set(x,32,z);scene.add(l)});
+  const goal=mkGoal();scene.add(goal);
+  const first=full||tl.segs.length<=2?0:tl.segs.length-2,tStart=Math.max(0,tl.segs[first].t0-.3);
+  const att=tl.owners.filter(o=>o.tLast>=tStart-.05).map(o=>{const m=mkPlayer('#ffd23f','#1c2a4a');scene.add(m);return {o,m}});
+  const defs=tl.defs.filter(d=>d.seg.t1>=tStart).map(d=>{const m=mkPlayer('#d23c3c','#f2f2f2');scene.add(m);return {d,m}});
+  const box=[[100.5,29],[100,40.5]].map(([x,y])=>{const m=mkPlayer('#d23c3c','#f2f2f2');scene.add(m);return {x,y,m}});
+  const gk=mkPlayer('#ff8c1a','#111111');scene.add(gk);
+  const ball=new THREE.Mesh(new THREE.SphereGeometry(.32,18,14),new THREE.MeshLambertMaterial({color:'#ffffff'}));scene.add(ball);
+  const bsh=new THREE.Mesh(new THREE.CircleGeometry(.4,14),new THREE.MeshBasicMaterial({color:0,transparent:true,opacity:.35,depthWrite:false}));bsh.rotation.x=-Math.PI/2;bsh.position.y=.04;scene.add(bsh);
+  const cam=new THREE.PerspectiveCamera(34,16/9,.5,420);
+  J3.scene=scene;J3.cam=cam;J3.st={tl,att,defs,box,gk,ball,bsh,goal,tStart,tx:null,tz:0,gy:34};
+}
+function j3Frame(t){
+  const S=J3.st,tl=S.tl,b=j3Ball(tl,t),V=(x,y)=>[x-52.5,y-34];
+  const [bx,bz]=V(b.x,b.y);S.ball.position.set(bx,b.h,bz);S.ball.rotation.z-=.25;S.bsh.position.set(bx,.04,bz);
+  S.att.forEach(({o,m})=>{let q=j3Owner(o,t);const own=o.carry.find(s=>t>=s.t0&&t<=s.t1);
+    let x=q.x,y=q.y;if(own){x-=own.dir[0]*.75;y-=own.dir[1]*.75}
+    const [px,pz]=V(x,y);m.position.set(px,0,pz);const run=q.mv?Math.sin(t*15):0;m.userData.legL.rotation.z=run*.5;m.userData.legR.rotation.z=-run*.5;m.userData.inner.position.y=q.mv?Math.abs(run)*.06:0;
+    const dx=(q.dx!=null?q.dx:(b.x-q.x)),dy=(q.dy!=null?q.dy:(b.y-q.y));m.rotation.y=Math.atan2(-dy,dx)});
+  S.defs.forEach(({d,m})=>{let x,y,fall=0;
+    if(t<d.tPass){const k=Math.max(0,Math.min(1,(t-(d.tPass-1.3))/1.3))*.72;x=d.hx+(b.x-d.hx)*k;y=d.hy+(b.y-d.hy)*k}
+    else{const k=.72,bp=j3Ball(tl,d.tPass);x=d.hx+(bp.x-d.hx)*k;y=d.hy+(bp.y-d.hy)*k;fall=Math.min(1,(t-d.tPass)/.45)}
+    const [px,pz]=V(x,y);m.position.set(px,0,pz);m.rotation.y=Math.atan2(-(b.y-y),b.x-x);m.userData.inner.rotation.x=fall*1.25*d.side;m.userData.inner.position.y=-fall*.15});
+  S.box.forEach(o=>{const y=o.y+(b.y-o.y)*.3,x=o.x-(b.x>90?(b.x-90)*.12:0);const [px,pz]=V(x,y);o.m.position.set(px,0,pz);o.m.rotation.y=Math.atan2(-(b.y-y),b.x-x)});
+  let gy=Math.max(30.6,Math.min(37.4,b.y)),dive=0;const sh=tl.shot;
+  if(sh&&t>=sh.t0){const k=Math.min(1,(t-sh.t0)/sh.d),ey=sh.b[1],tgt=ey+(ey>34?-1.7:1.7);gy=S.gy+(tgt-S.gy)*k;dive=(ey>34?1:-1)*k}
+  else S.gy+=(gy-S.gy)*.12,gy=S.gy;
+  const [gx,gz]=V(104.2,gy);S.gk.position.set(gx,Math.abs(dive)*.5,gz);S.gk.rotation.y=Math.PI;S.gk.userData.inner.rotation.x=-dive*1.15;
+  const back=S.goal.userData.back,arr=back.geometry.attributes.position.array,base=back.userData.base;
+  if(b.goal){const e=t-tl.T,amp=Math.max(0,.6*(1-e/1.4)),ly=b.h-1.22,lz=-(b.y-34);
+    for(let i=0;i<arr.length;i+=3){const dx=base[i]-lz,dy=base[i+1]-ly,dd=Math.hypot(dx,dy);arr[i+2]=base[i+2]+amp*Math.exp(-dd*dd/2)*Math.cos(e*9)}back.geometry.attributes.position.needsUpdate=true}
+  else if(arr[2]!==base[2]){arr.set(base);back.geometry.attributes.position.needsUpdate=true}
+  const fx=document.getElementById('gfx');if(fx)fx.classList.toggle('on',!!b.goal&&t-tl.T<1.6);
+  if(S.tx===null){S.tx=bx;S.tz=bz*.5}
+  S.tx+=(bx-S.tx)*.07;S.tz+=(bz*.5-S.tz)*.07;
+  const near=Math.max(0,Math.min(1,(b.x-78)/22));
+  J3.cam.position.set(S.tx-7-near*5,15-near*6,38-near*14);J3.cam.lookAt(S.tx+3+near*4,0,S.tz);
+}
+function j3Play(){
+  cancelAnimationFrame(anim);const box=document.getElementById('f3');if(!box)return;
+  const g=JG.cur.g;j3Build(g,jgFull());const r=J3.r;box.appendChild(r.domElement);
+  const size=()=>{const w=box.clientWidth,h=box.clientHeight;if(!w||!h)return;r.setSize(w,h,false);J3.cam.aspect=w/h;J3.cam.updateProjectionMatrix()};
+  if(J3.ro)J3.ro.disconnect();J3.ro=new ResizeObserver(size);J3.ro.observe(box);size();
+  const S=J3.st,end=S.tl.T+2.4;
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){S.tx=null;j3Frame(S.tl.T+.3);r.render(J3.scene,J3.cam);return}
+  let t0=null;const step=ts=>{if(!document.body.contains(r.domElement))return;if(t0===null)t0=ts;let t=S.tStart+(ts-t0)/1000;if(t>end){t0=ts;t=S.tStart;S.tx=null}
+    j3Frame(t);r.render(J3.scene,J3.cam);anim=requestAnimationFrame(step)};
   anim=requestAnimationFrame(step);
 }
 function jgOpt(i){const c=JG.cur;if(c.done)return;c.pick=c.opts[i];c.done=true;const ok=c.pick===c.g;c.pts=ok?Math.max(10,100-30*c.h):0;JG.score+=c.pts;JG.res.push(ok?(c.h===0?'🟢':'🟡'):'🔴');jgRender()}
@@ -453,7 +644,7 @@ function jgSummary(){
 let LN=null;
 const yr=e=>+e.d.slice(0,4);
 function clusterRound(){for(let k=0;k<60;k++){const a=E[Math.floor(Math.random()*E.length)];const near=E.filter(e=>Math.abs(yr(e)-yr(a))<=4);if(near.length>=5)return shuf(near).slice(0,5)}return shuf(E).slice(0,5)}
-function lnIntro(){intro('Línea del tiempo',`Te damos 5 momentos del fútbol mezclados. Ordenalos del más viejo (arriba) al más nuevo (abajo). Hay ${E.length} momentos.`,['Movelos con las flechas.','20 puntos por cada uno en su lugar y 20 de bonus si acertás todos.','En el modo difícil los 5 pasaron en la misma época.'],ART.linea,[{a:'ln-mode',v:'diario',n:'Desafío del día',d:'3 rondas, las mismas para todos hoy.'},{a:'ln-mode',v:'normal',n:'Modo normal',d:'5 rondas con momentos de cualquier época.'},{a:'ln-mode',v:'dificil',n:'Modo difícil',d:'5 rondas con momentos de la misma época.'}],'ln')}
+function lnIntro(){intro('Línea del tiempo',`Te damos 5 momentos del fútbol mezclados. Ordenalos del más viejo (arriba) al más nuevo (abajo). Hay ${E.length} momentos.`,['Arrastrá cada recuadro a su lugar, o usá las flechas.','20 puntos por cada uno en su lugar y 20 de bonus si acertás todos.','En el modo difícil los 5 pasaron en la misma época.'],ART.linea,[{a:'ln-mode',v:'diario',n:'Desafío del día',d:'3 rondas, las mismas para todos hoy.'},{a:'ln-mode',v:'normal',n:'Modo normal',d:'5 rondas con momentos de cualquier época.'},{a:'ln-mode',v:'dificil',n:'Modo difícil',d:'5 rondas con momentos de la misma época.'}],'ln')}
 function lnStart(mode){
   let R=[];if(mode==='diario'){const s=shuf(E,mul(hs('ln'+today)));R=[s.slice(0,5),s.slice(5,10),s.slice(10,15)]}
   else if(mode==='normal'){const s=shuf(E);for(let i=0;i<5;i++)R.push(s.slice(i*5,i*5+5))}
@@ -461,18 +652,35 @@ function lnStart(mode){
   LN={mode,R,k:0,score:0,res:[]};lnRound();
 }
 function lnRound(){const r=LN.mode==='diario'?mul(hs('lnr'+today+LN.k)):Math.random;let it=shuf(LN.R[LN.k],r);const ok=a=>a.every((e,i)=>!i||a[i-1].d<=e.d);let n=0;while(ok(it)&&n++<20)it=shuf(it);LN.cur={it,checked:false};LN.sum=null;lnRender()}
+const GRIP='<svg width="14" height="20" viewBox="0 0 14 20" aria-hidden="true"><g fill="currentColor">'+[3,10,17].map(y=>`<circle cx="4" cy="${y}" r="1.8"/><circle cx="10" cy="${y}" r="1.8"/>`).join('')+'</g></svg>';
 function lnRender(){
   if(LN.sum){app.innerHTML=LN.sum;return}
   const c=LN.cur,sorted=c.it.slice().sort((a,b)=>a.d<b.d?-1:1);
   app.innerHTML=`<div class="bar"><div class="score"><span>Ronda <b>${LN.k+1}/${LN.R.length}</b></span><span>Puntos <b>${LN.score}</b></span></div><button class="btn" data-a="ln-intro">Modos</button></div>
   <div class="grid2"><div><div class="head"><small>${LN.mode==='dificil'?'Modo difícil':'Ordená cronológicamente'}</small><h2>¿Qué pasó primero?</h2></div>
    <div class="tl-axis"><span>▲ Más viejo</span></div>
-   <ol class="tl">${c.it.map((e,i)=>{const good=c.checked&&sorted[i]===e;return `<li class="${c.checked?(good?'good':'bad'):''}"><span class="n">${i+1}</span><span class="t">${esc(e.t)}${c.checked?`<span class="d">${fdate(e.d)}${good?'':` · iba en el puesto ${sorted.indexOf(e)+1}`}</span>`:''}</span>${c.checked?'<span></span>':`<span class="mv"><button data-a="ln-up" data-v="${i}" ${i==0?'disabled':''} aria-label="Subir"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></button><button data-a="ln-down" data-v="${i}" ${i==c.it.length-1?'disabled':''} aria-label="Bajar"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></button></span>`}</li>`}).join('')}</ol>
+   <ol class="tl" id="tl">${c.it.map((e,i)=>{const good=c.checked&&sorted[i]===e;return `<li data-i="${i}" class="${c.checked?(good?'good':'bad'):'dr'}">${c.checked?`<span class="n">${i+1}</span>`:`<span class="grip" title="Arrastrar">${GRIP}</span>`}<span class="t">${esc(e.t)}${c.checked?`<span class="d">${fdate(e.d)}${good?'':` · iba en el puesto ${sorted.indexOf(e)+1}`}</span>`:''}</span>${c.checked?'<span></span>':`<span class="mv"><button data-a="ln-up" data-v="${i}" ${i==0?'disabled':''} aria-label="Subir"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></button><button data-a="ln-down" data-v="${i}" ${i==c.it.length-1?'disabled':''} aria-label="Bajar"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></button></span>`}</li>`}).join('')}</ol>
    <div class="tl-axis" style="margin-top:8px"><span>▼ Más nuevo</span></div></div>
-   <div class="side"><div class="msg ${c.checked?(c.pts>=100?'good':c.pts>=60?'':'bad'):''}" aria-live="polite">${c.checked?`${c.hits} de 5 en su lugar · +${c.pts} puntos`:'Cuando estés seguro, comprobá.'}</div>
+   <div class="side"><div class="msg ${c.checked?(c.pts>=100?'good':c.pts>=60?'':'bad'):''}" aria-live="polite">${c.checked?`${c.hits} de 5 en su lugar · +${c.pts} puntos`:'Arrastrá los recuadros y, cuando estés seguro, comprobá.'}</div>
    ${c.checked?`<button class="btn pri" data-a="ln-next">${LN.k+1>=LN.R.length?'Ver resultado final':'Siguiente ronda'}</button>`:`<button class="btn pri" data-a="ln-check">Comprobar</button>`}<p class="fine kbd">Atajo: <kbd>Enter</kbd> para comprobar y seguir.</p></div></div>`;
 }
 function lnMove(i,d){const a=LN.cur.it,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];lnRender();const b=app.querySelector(`[data-a="ln-${d<0?'up':'down'}"][data-v="${j}"]`);if(b&&!b.disabled)b.focus()}
+// Arrastrar y soltar: con el mouse desde cualquier parte del recuadro; con el dedo desde el agarre (así la página sigue scrolleando).
+let DRAG=null;
+app.addEventListener('pointerdown',e=>{
+  if(!LN||!LN.cur||LN.cur.checked||LN.sum)return;const li=e.target.closest('#tl li.dr');if(!li||e.target.closest('button'))return;
+  if(e.pointerType!=='mouse'&&!e.target.closest('.grip'))return;
+  e.preventDefault();const list=[...li.parentNode.children];
+  DRAG={li,i:+li.dataset.i,j:+li.dataset.i,y0:e.clientY,list,mids:list.map(x=>{const r=x.getBoundingClientRect();return r.top+r.height/2}),h:li.getBoundingClientRect().height+8,id:e.pointerId};
+  li.classList.add('drag');try{li.setPointerCapture(e.pointerId)}catch(x){}
+});
+document.addEventListener('pointermove',e=>{
+  if(!DRAG||e.pointerId!==DRAG.id)return;const dy=e.clientY-DRAG.y0;DRAG.li.style.transform=`translateY(${dy}px)`;
+  const y=DRAG.mids[DRAG.i]+dy;let j=0;DRAG.mids.forEach((m,k)=>{if(k!==DRAG.i&&y>m)j++});DRAG.j=j;
+  DRAG.list.forEach((x,k)=>{if(k===DRAG.i)return;let s=0;if(k>DRAG.i&&k<=j)s=-DRAG.h;if(k<DRAG.i&&k>=j)s=DRAG.h;x.style.transform=s?`translateY(${s}px)`:''});
+});
+const dragEnd=e=>{if(!DRAG||(e&&e.pointerId!==DRAG.id))return;const {i,j}=DRAG;DRAG=null;if(i!==j){const a=LN.cur.it,[m]=a.splice(i,1);a.splice(j,0,m)}lnRender()};
+document.addEventListener('pointerup',dragEnd);document.addEventListener('pointercancel',dragEnd);
 function lnCheck(){const c=LN.cur,s=c.it.slice().sort((a,b)=>a.d<b.d?-1:1);c.hits=c.it.filter((e,i)=>s[i]===e).length;c.pts=c.hits*20+(c.hits===5?20:0);c.checked=true;LN.score+=c.pts;LN.res.push(c.hits===5?'🟢':c.hits>=3?'🟡':'🔴');lnRender()}
 function lnNext(){if(LN.k+1>=LN.R.length)return lnSummary();LN.k++;lnRound()}
 function lnSummary(){
@@ -484,7 +692,7 @@ function lnSummary(){
 
 // ---------- RUTEO Y EVENTOS ----------
 const ACT={
- 'inf-intro':()=>{IF=null;infIntro()},'inf-mode':v=>infStart(v),'inf-pick':v=>infPick(+v),'inf-hint':v=>infHint(v),'inf-next':()=>infNextBtn(),
+ 'inf-intro':()=>{IF=null;infIntro()},'inf-mode':v=>infStart(v),'inf-club':v=>infStart('club',v),'inf-pick':v=>infPick(+v),'inf-hint':v=>infHint(v),'inf-next':()=>infNextBtn(),
  'jg-intro':()=>{cancelAnimationFrame(anim);JG=null;jgIntro()},'jg-mode':v=>jgStart(v),'jg-hint':v=>{if(JG.cur.done)return;JG.cur.h=Math.max(JG.cur.h,+v);jgRender()},'jg-opt':v=>jgOpt(+v),'jg-next':()=>jgNext(),'jg-replay':()=>jgPlay(),
  'ln-intro':()=>{LN=null;lnIntro()},'ln-mode':v=>lnStart(v),'ln-up':v=>lnMove(+v,-1),'ln-down':v=>lnMove(+v,1),'ln-check':()=>lnCheck(),'ln-next':()=>lnNext(),
  'copy-clave':()=>{const t=ACC.nueva||'';try{navigator.clipboard.writeText(t).then(()=>toast('¡Copiada!'),()=>toast('Seleccioná la palabra y copiala'))}catch(e){toast('Seleccioná la palabra y copiala')}},
