@@ -1,0 +1,521 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>La Pizarra · Juegos de fútbol</title>
+<meta name="description" content="Tres juegos de fútbol: El Infiltrado, La Jugada y Línea del tiempo. Desafío diario y ranking entre amigos.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Anton&family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+/* VOICE: vestuario de noche, entretiempo, picante y de potrero
+   IDEA: la pizarra táctica del DT, con tiza sobre césped
+   PICTURE: la cancha misma es el tablero de cada juego
+   COLOUR and TYPE: verde césped profundo, tiza, tarjeta amarilla y roja; Anton + 'Barlow Condensed',sans-serif
+   LAYOUT: barra arriba, juego al centro en una columna, controles debajo */
+:root{color-scheme:dark;--bg:#0c2418;--panel:#12321f;--line:#2a5a3d;--chalk:#f2efe4;--mute:#a9bfae;--yel:#ffd23f;--red:#ef4b4b;--ok:#5fd68a;--grass1:#1d6b3a;--grass2:#1a6135}
+:root[data-theme=light]{color-scheme:dark}:root[data-theme=dark]{color-scheme:dark}
+*{box-sizing:border-box;min-width:0}
+body{margin:0;background:radial-gradient(1200px 600px at 50% -200px,#174a2d,transparent),var(--bg);color:var(--chalk);font:16px/1.5 Barlow,system-ui,sans-serif;overflow-x:clip;min-height:100vh}
+a{color:inherit}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,a:focus-visible{outline:3px solid var(--yel);outline-offset:2px}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px max(4vw,14px);border-bottom:1px solid var(--line);position:sticky;top:0;background:rgba(12,36,24,.92);backdrop-filter:blur(6px);z-index:5}
+.logo{font:400 24px/1 Anton,Impact,sans-serif;letter-spacing:.5px;text-decoration:none;display:flex;align-items:center;gap:10px}
+.logo i{width:26px;height:26px;border-radius:50%;border:2.5px solid var(--chalk);position:relative;display:inline-block}
+.logo i:after{content:"";position:absolute;inset:7px;background:var(--yel);border-radius:2px;transform:rotate(12deg)}
+.nav{display:flex;gap:4px;flex-wrap:wrap}
+.nav a{font:600 15px Barlow Condensed,sans-serif;text-decoration:none;padding:8px 10px;border-radius:8px;color:var(--mute)}
+.nav a[aria-current=page]{color:var(--bg);background:var(--chalk)}
+main{max-width:1180px;margin:0 auto;padding:clamp(18px,3vw,36px) max(4vw,14px) 60px}
+h1,h2,h3{font-family:Anton,Impact,sans-serif;font-weight:400;line-height:1.05;margin:0;text-wrap:balance}
+h1{font-size:clamp(40px,8vw,64px)}
+h2{font-size:clamp(30px,5vw,42px)}
+h3{font-size:24px}
+.lead{color:var(--mute);font-size:17px;max-width:60ch;margin:10px 0 0}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,280px),1fr));gap:16px;margin-top:28px}
+.card{display:flex;flex-direction:column;text-decoration:none;background:var(--panel);border:1px solid var(--line);border-radius:16px;overflow:hidden;transition:transform .15s}
+.card:hover{transform:translateY(-3px)}
+.card svg{display:block;width:100%;height:auto;background:linear-gradient(var(--grass1),var(--grass2))}
+.card>div{padding:16px 18px 20px}
+.card p{margin:6px 0 0;color:var(--mute)}
+.card .go{margin-top:12px;font:700 15px 'Barlow Condensed',sans-serif;color:var(--yel)}
+.rec{margin-top:22px;color:var(--mute);font-size:15px}
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between;margin:16px 0}
+.tabs{display:flex;gap:6px;flex-wrap:wrap}
+.tab,.btn{min-height:44px;padding:8px 16px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);font:700 16px Barlow Condensed,sans-serif;letter-spacing:.2px}
+.tab[aria-pressed=true]{background:var(--chalk);color:var(--bg);border-color:var(--chalk)}
+.btn.pri{background:var(--yel);color:#1b1a10;border-color:var(--yel)}
+.btn:disabled{opacity:.4;cursor:default}
+.score{display:flex;gap:16px;font:600 16px 'Barlow Condensed',sans-serif;color:var(--mute);flex-wrap:wrap}
+.score b{color:var(--chalk);font-size:20px;margin-left:4px}
+.lives{display:inline-flex;gap:4px;vertical-align:middle;margin-left:6px}
+.lives i{width:12px;height:12px;border-radius:50%;background:var(--red)}
+.lives i.off{background:transparent;border:1.5px solid #5d7a66}
+.head{margin:6px 0 12px}
+.head small{display:block;color:var(--yel);font:700 15px 'Barlow Condensed',sans-serif;margin-bottom:4px}
+.grid2{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:22px;align-items:start}
+@media(max-width:760px){.grid2{grid-template-columns:minmax(0,1fr)}}
+@media(min-width:980px){.grid2.jg{grid-template-columns:minmax(0,1.8fr) minmax(0,1fr)}.grid2.jg .opts{grid-template-columns:minmax(0,1fr)}}
+.kbd{display:none}@media(hover:hover) and (pointer:fine){.kbd{display:block}}
+kbd{font:600 13px Barlow,sans-serif;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:#0f2a1b}
+.opt kbd{margin-right:8px;color:var(--mute)}
+.pitch{position:relative;aspect-ratio:68/100;width:min(100%,520px,max(300px,calc((100svh - 275px)*.68)));margin:0 auto;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(var(--grass1) 0 10%,var(--grass2) 10% 20%);box-shadow:0 18px 40px rgba(0,0,0,.35),inset 0 0 0 1px rgba(255,255,255,.08)}
+.pitch>svg{position:absolute;inset:0;width:100%;height:100%}
+.pl{--d:clamp(28px,8vw,36px);position:absolute;transform:translate(-50%,calc(var(--d)/-2));display:flex;flex-direction:column;align-items:center;gap:3px;border:0;background:none;padding:0;width:23%;min-height:44px}
+.dot{width:var(--d);aspect-ratio:1;border-radius:50%;background:var(--c);border:2.5px solid #fff;box-shadow:0 4px 8px rgba(0,0,0,.4);display:grid;place-items:center;font:700 18px/1 'Barlow Condensed',sans-serif;color:#fff;text-shadow:0 1px 3px #000;transition:transform .15s}
+.pl:hover .dot{transform:scale(1.08)}
+.nm{font:600 13px/1.1 Barlow Condensed,sans-serif;background:rgba(5,20,12,.72);padding:3px 6px;border-radius:5px;text-align:center;overflow-wrap:anywhere;max-width:100%}
+.pl.ok .dot{border-color:var(--ok);opacity:.55}.pl.ok .nm{color:var(--ok)}
+.pl.yel .dot{border-color:var(--yel);opacity:.55}.pl.yel .nm{color:var(--yel)}
+.pl.inf .dot,.pl.rev .dot{border-color:var(--red);box-shadow:0 0 0 5px rgba(239,75,75,.35)}
+.pl.inf .nm,.pl.rev .nm{background:var(--red);color:#fff}
+.pl.inf .dot{animation:pop .4s}
+@keyframes pop{50%{transform:scale(1.3)}}
+.side{display:flex;flex-direction:column;gap:14px}
+.box{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:16px}
+.box h3{font-size:20px;margin-bottom:8px}
+.hints{display:grid;gap:8px}
+.hint{display:flex;align-items:center;gap:10px;text-align:left;min-height:48px;padding:8px 12px;border-radius:10px;border:1.5px solid var(--line);background:#0f2a1b}
+.hint:disabled{opacity:.5;cursor:default}
+.hint .ic{flex:none;width:18px;height:24px;border-radius:3px;background:var(--yel)}
+.hint .ic.r{background:var(--chalk);border-radius:50%;width:22px;height:22px}
+.hint .ic.z{background:none;border:2px solid var(--chalk);width:22px;height:22px;border-radius:4px}
+.hint span{font:600 16px 'Barlow Condensed',sans-serif}
+.hint em{font-style:normal;color:var(--mute);font-size:14px;display:block;font-family:Barlow,sans-serif;font-weight:400}
+.msg{font:600 17px 'Barlow Condensed',sans-serif;min-height:24px}
+.msg.bad{color:var(--red)}.msg.good{color:var(--ok)}
+.reveal p{margin:6px 0}
+.reveal b{color:var(--yel)}
+.info{color:var(--mute);font-size:15px;margin:0}
+.info b{color:var(--chalk)}
+.share pre{white-space:pre-wrap;background:#0a1d13;border:1px dashed var(--line);border-radius:10px;padding:12px;font:600 16px/1.5 'Barlow Condensed',sans-serif;margin:10px 0}
+.row{display:flex;gap:8px;flex-wrap:wrap}
+.btn.wa{background:#25d366;color:#06240f;border-color:#25d366;text-decoration:none;display:inline-flex;align-items:center}
+.big{font:400 clamp(48px,10vw,72px)/1 Anton;color:var(--yel)}
+.field{position:relative;aspect-ratio:105/68;width:min(100%,max(320px,calc((100svh - 260px)*1.544)));margin:0 auto;border-radius:14px;overflow:hidden;background:repeating-linear-gradient(90deg,var(--grass1) 0 10%,var(--grass2) 10% 20%);box-shadow:0 18px 40px rgba(0,0,0,.35)}
+.field svg{position:absolute;inset:0;width:100%;height:100%}
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.opt{min-height:52px;border-radius:10px;border:1.5px solid var(--line);background:#0f2a1b;font:700 18px 'Barlow Condensed',sans-serif;padding:6px 10px}
+.opt.right{background:var(--ok);color:#0a2414;border-color:var(--ok)}
+.opt.wrong{background:var(--red);color:#fff;border-color:var(--red)}
+.tl{list-style:none;margin:0;padding:0;display:grid;gap:8px;position:relative}
+.tl li{display:grid;grid-template-columns:34px minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--panel);border:1.5px solid var(--line);border-radius:12px;padding:8px 8px 8px 10px;transition:background .2s}
+.tl .n{font:400 22px Anton;color:var(--yel);text-align:center}
+.tl .t{font:600 17px/1.2 'Barlow Condensed',sans-serif}
+.tl .d{display:block;font:500 14px Barlow,sans-serif;color:var(--mute);margin-top:2px}
+.tl .mv{display:flex;gap:4px}
+.tl .mv button{width:44px;height:44px;border-radius:9px;border:1.5px solid var(--line);background:#0f2a1b;display:grid;place-items:center}
+.tl .mv button:disabled{opacity:.3}
+.tl li.good{border-color:var(--ok)}.tl li.good .d{color:var(--ok)}
+.tl li.bad{border-color:var(--red)}.tl li.bad .d{color:var(--red)}
+.tl-axis{display:flex;justify-content:space-between;font:700 14px 'Barlow Condensed',sans-serif;color:var(--mute);margin:0 0 8px}
+.intro{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:24px;align-items:center;margin-top:8px}
+@media(max-width:700px){.intro{grid-template-columns:minmax(0,1fr)}}
+.intro ul{padding-left:18px;margin:12px 0;color:var(--mute)}
+.intro li{margin:4px 0}
+.modes{display:grid;gap:10px;margin-top:16px}
+.mode{display:block;text-align:left;padding:14px 16px;border-radius:12px;border:1.5px solid var(--line);background:var(--panel)}
+.mode b{font:700 19px 'Barlow Condensed',sans-serif;display:block}
+.mode span{color:var(--mute);font-size:15px}
+.mode:hover{border-color:var(--yel)}
+.fine{font-size:13px;color:var(--mute);margin-top:10px}
+#toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,120px);background:var(--chalk);color:var(--bg);font:700 16px 'Barlow Condensed',sans-serif;padding:10px 18px;border-radius:10px;transition:transform .25s;z-index:9}
+#toast.on{transform:translate(-50%,0)}
+@media(max-width:600px){.top{flex-wrap:wrap}.nav a{padding:6px 8px;font-size:14px}.opts{grid-template-columns:minmax(0,1fr)}}
+.me{display:inline-flex!important;align-items:center;gap:8px;border:1.5px solid var(--line);color:var(--chalk)!important}
+.me[aria-current]{color:var(--bg)!important}
+.av{display:inline-grid;place-items:center;width:26px;height:26px;border-radius:50%;background:var(--yel);color:#1b1a10;font:400 15px Anton,sans-serif;flex:none}
+.av.big2{width:48px;height:48px;font-size:24px}.av.huge{width:72px;height:72px;font-size:38px}
+.hello{display:flex;align-items:center;gap:14px;text-decoration:none;margin-top:20px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px 16px;max-width:520px;color:var(--mute)}
+.hello b{color:var(--chalk);font:700 20px 'Barlow Condensed',sans-serif}
+.cta{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:12px;margin-top:18px;padding:14px 16px;border:1.5px dashed var(--yel);border-radius:14px}
+.cta p{margin:0;font:600 17px 'Barlow Condensed',sans-serif}
+.cta .btn{text-decoration:none;display:inline-flex;align-items:center}
+.form{display:grid;gap:8px;margin-top:14px}
+.form label{font:600 15px 'Barlow Condensed',sans-serif;color:var(--mute)}
+.form input,.form select{min-height:46px;font:16px Barlow,sans-serif;color:var(--chalk);background:#0a1d13;border:1.5px solid var(--line);border-radius:10px;padding:8px 12px}
+.form input:focus,.form select:focus{outline:3px solid var(--yel);outline-offset:1px}
+.form .btn{margin-top:8px}
+.pcard{display:flex;align-items:center;gap:16px}
+.meter{height:12px;border-radius:99px;background:#0a1d13;border:1px solid var(--line);overflow:hidden;margin:12px 0 8px}
+.meter i{display:block;height:100%;background:var(--yel);border-radius:99px}
+.tb{width:100%;border-collapse:collapse;font-size:15px}
+.tb th{font:600 14px 'Barlow Condensed',sans-serif;color:var(--mute);text-align:left;padding:6px 4px;border-bottom:1px solid var(--line)}
+.tb td{padding:8px 4px;border-bottom:1px solid rgba(42,90,61,.5)}
+.num{text-align:right!important;font-variant-numeric:tabular-nums;white-space:nowrap}
+.week{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.day{display:grid;justify-items:center;gap:4px;padding:8px 2px;border-radius:10px;background:#0f2a1b;border:1px solid var(--line);font:600 13px 'Barlow Condensed',sans-serif;color:var(--mute)}
+.day.hoy{border-color:var(--yel)}.day b{color:var(--chalk);font-size:14px}
+.day i{width:9px;height:9px;border-radius:50%;border:1.5px solid #5d7a66}.day i.on{background:var(--ok);border-color:var(--ok)}
+.rank{list-style:none;margin:0;padding:0;display:grid;gap:6px}
+.rank li{display:grid;grid-template-columns:32px minmax(0,1fr) auto;gap:10px;align-items:center;padding:8px 10px;border-radius:10px;background:#0f2a1b;border:1px solid var(--line)}
+.rank li.me2{border-color:var(--yel)}
+.rank .pos{font:400 20px Anton,sans-serif;color:var(--yel);text-align:center}
+.rank .who b{display:block;font:700 17px 'Barlow Condensed',sans-serif;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rank .who em{font-style:normal;color:var(--mute);font-size:13px}
+.rank .num{font:700 18px 'Barlow Condensed',sans-serif}
+details.box summary{cursor:pointer;font:700 17px 'Barlow Condensed',sans-serif;min-height:28px}
+.auth{align-items:stretch}.auth .form{margin:0}.auth h2{margin-bottom:4px}
+.ferr{color:var(--red);font:600 15px 'Barlow Condensed',sans-serif;margin:4px 0 0;min-height:0}
+.ferr:empty{display:none}
+.clave{border-color:var(--yel);margin-bottom:18px}
+.kw{font:400 clamp(28px,7vw,44px)/1.1 Anton,sans-serif;color:var(--yel);margin:10px 0 14px;overflow-wrap:anywhere;user-select:all}
+.kwline{margin:10px 0 0;color:var(--mute)}.kwline b{color:var(--yel);user-select:all}
+#fclub{margin-top:16px}
+@media(prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+</head>
+<body>
+<header class="top">
+  <a class="logo" href="#"><i></i>LA PIZARRA</a>
+  <nav class="nav" id="nav">
+    <a href="#infiltrado">El Infiltrado</a>
+    <a href="#jugada">La Jugada</a>
+    <a href="#linea">Línea del tiempo</a>
+    <a href="#perfil" id="me" class="me"></a>
+  </nav>
+</header>
+<main id="app"></main>
+<div id="toast" role="status"></div>
+<script src="data.js"></script>
+<script>
+{
+// ---------- UTILIDADES ----------
+const {M,G,E}=window;
+const app=document.getElementById('app');
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const D=new Date();
+const dkey=d=>`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+const today=dkey(D);
+const hs=s=>{let h=1779033703;for(const ch of s){h=Math.imul(h^ch.charCodeAt(0),3432918353);h=h<<13|h>>>19}return h>>>0};
+const mul=a=>()=>{a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296};
+const shuf=(a,r=Math.random)=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(r()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const st={get(k,d){try{const v=localStorage.getItem('pz_'+k);return v==null?d:JSON.parse(v)}catch(e){return d}},set(k,v){try{localStorage.setItem('pz_'+k,JSON.stringify(v))}catch(e){}}};
+const toastEl=document.getElementById('toast');let tt;
+const toast=m=>{toastEl.textContent=m;toastEl.classList.add('on');clearTimeout(tt);tt=setTimeout(()=>toastEl.classList.remove('on'),2200)};
+const lives=(n,max)=>`<span class="lives" aria-label="${n} vidas">${Array.from({length:max},(_,i)=>`<i class="${i<n?'':'off'}"></i>`).join('')}</span>`;
+M.forEach(m=>m.id=hs(m.tm+'|'+m.s).toString(36));
+G.forEach(g=>g.id=hs(g.w+'|'+g.tor).toString(36));
+const MES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+const fdate=d=>{const[y,m,dd]=d.split('-');return `${+dd} ${MES[m-1]} ${y}`};
+const ZN=['arquero','defensor','mediocampista','delantero'];
+let anim=0;
+
+// ---------- USUARIO Y PROGRESO ----------
+const CLUBES=['Boca','River','Racing','Independiente','San Lorenzo','Rosario Central',"Newell's",'Estudiantes','Gimnasia','Vélez','Huracán','Lanús','Talleres','Belgrano','Banfield','Argentinos','Colón','Unión','Otro'];
+const NIV=[[0,'Potrero'],[300,'Inferiores'],[1000,'Reserva'],[2500,'Titular'],[5000,'Capitán'],[9000,'Ídolo'],[15000,'Leyenda']];
+const nivel=p=>{let i=0;NIV.forEach((n,k)=>{if(p>=n[0])i=k});return {i:i+1,n:NIV[i][1],base:NIV[i][0],next:NIV[i+1]?NIV[i+1][0]:null}};
+const ACC={mode:'cargando',ses:null,P:null,saving:false,again:false,pend:[],online:true,nueva:null};
+const newP=(apodo,club)=>({apodo,club,creado:today,pts:0,jug:{inf:0,jg:0,ln:0},best:{inf:0,jg:0,ln:0,racha:0},dias:{},visto:{inf:[],jg:[]}});
+function fixP(){const P=ACC.P;if(!P)return;const b=newP(P.apodo||'Jugador',P.club||'Otro');for(const k in b){if(P[k]==null)P[k]=b[k]}for(const k of ['jug','best','visto'])for(const j in b[k])if(P[k][j]==null)P[k][j]=b[k][j]}
+async function api(path,body){
+  const ctl=new AbortController(),t=setTimeout(()=>ctl.abort(),12000);
+  try{const r=await fetch('/api/'+path,{method:body?'POST':'GET',headers:{'content-type':'application/json'},body:body?JSON.stringify(body):undefined,signal:ctl.signal});
+    const j=await r.json().catch(()=>({}));if(!r.ok){const e=new Error(j.error||'No se pudo conectar con el servidor.');e.status=r.status;throw e}return j}
+  catch(e){if(!e.status){e.status=0;e.message='No se pudo conectar con el servidor. Revisá tu conexión.'}throw e}
+  finally{clearTimeout(t)}
+}
+async function initAccount(){
+  ACC.ses=st.get('sesion',null);
+  if(ACC.ses){
+    const cache=st.get('perfil_cache',null);ACC.P=cache;
+    try{const r=await api('login',ACC.ses);ACC.P=r.P;
+      if(cache&&cache.pts>r.P.pts){ACC.P=cache;fixP();save()}}
+    catch(e){if(e.status===401){logout(true);toast('Tu sesión venció: entrá de nuevo con tu palabra clave')}else ACC.online=false}
+  }
+  ACC.mode='listo';fixP();paintMe();const h=location.hash.slice(1);if(h==='perfil'||h===''||!curState(h))route(true);
+}
+function logout(quiet){ACC.ses=null;ACC.P=null;ACC.nueva=null;st.set('sesion',null);st.set('perfil_cache',null);paintMe();if(!quiet)toast('Cerraste sesión')}
+async function save(){
+  const P=ACC.P;if(!P)return;st.set('perfil_cache',P);
+  if(!ACC.ses)return;
+  if(ACC.saving){ACC.again=true;return}
+  ACC.saving=true;
+  try{await api('guardar',{nombre:ACC.ses.nombre,clave:ACC.ses.clave,P});ACC.online=true}
+  catch(e){if(e.status===401){logout(true);toast('Tu sesión venció: entrá de nuevo')}else{ACC.online=false;toast('Sin conexión: se guarda en este dispositivo y se sube después')}}
+  ACC.saving=false;if(ACC.again){ACC.again=false;save()}
+}
+function record(game,score,o={}){
+  const P=ACC.P;if(!P){ACC.pend.push([game,score,o]);return null}
+  P.jug[game]++;
+  const counted=!o.daily||P.dias[today]?.[game]==null;
+  if(o.daily&&counted)(P.dias[today]=P.dias[today]||{})[game]=score;
+  if(counted)P.pts+=score;
+  if(score>P.best[game])P.best[game]=score;
+  if(o.racha!=null&&o.racha>P.best.racha)P.best.racha=o.racha;
+  const ks=Object.keys(P.dias).sort();while(ks.length>60)delete P.dias[ks.shift()];
+  save();paintMe();return counted;
+}
+function markSeen(k,id){const P=ACC.P;if(!P)return;const a=P.visto[k];if(!a.includes(id)){a.push(id);if(a.length>500)a.shift()}}
+function unseenFirst(list,k){const P=ACC.P;if(!P)return list;let v=new Set(P.visto[k]);if(list.every(x=>v.has(x.id))){P.visto[k]=[];v=new Set()}return list.slice().sort((a,b)=>v.has(a.id)-v.has(b.id))}
+const dailyDone=g=>ACC.P?ACC.P.dias[today]?.[g]:undefined;
+function paintMe(){const a=document.getElementById('me');const P=ACC.P;
+  if(ACC.mode==='cargando'){a.innerHTML='<span class="av">·</span><span>…</span>';return}
+  if(!P){a.innerHTML='<span class="av">+</span><span>Entrar</span>';return}
+  a.innerHTML=`<span class="av">${esc(P.apodo.slice(0,1).toUpperCase())}</span><span>${esc(P.apodo)} · ${P.pts} pts</span>`;}
+const saveCta=()=>ACC.P?`<p class="info" style="margin-top:12px">Guardado en tu usuario.</p>`:`<div class="cta"><p>Creá tu usuario y estos puntos se suman a tu perfil.</p><a class="btn pri" href="#perfil">Crear usuario</a></div>`;
+
+// ---------- DIBUJOS ----------
+const shareBox=txt=>`<div class="share"><pre id="shtxt">${esc(txt)}</pre><div class="row"><button class="btn pri" data-a="copy">Copiar resultado</button><a class="btn wa" href="https://wa.me/?text=${encodeURIComponent(txt)}" target="_blank" rel="noopener">Mandar por WhatsApp</a></div></div>`;
+const PITCH_V=`<svg viewBox="0 0 68 100" preserveAspectRatio="none" aria-hidden="true"><g fill="none" stroke="rgba(255,255,255,.55)" stroke-width=".4"><rect x="2" y="2" width="64" height="96"/><line x1="2" y1="50" x2="66" y2="50"/><circle cx="34" cy="50" r="8"/><rect x="14" y="2" width="40" height="15"/><rect x="24" y="2" width="20" height="5.5"/><rect x="14" y="83" width="40" height="15"/><rect x="24" y="92.5" width="20" height="5.5"/></g></svg>`;
+const PITCH_H=`<g fill="none" stroke="rgba(255,255,255,.5)" stroke-width=".35"><rect x="0" y="0" width="105" height="68"/><line x1="52.5" y1="0" x2="52.5" y2="68"/><circle cx="52.5" cy="34" r="9.15"/><rect x="88.5" y="13.85" width="16.5" height="40.3"/><rect x="99.5" y="24.85" width="5.5" height="18.3"/><rect x="0" y="13.85" width="16.5" height="40.3"/><rect x="0" y="24.85" width="5.5" height="18.3"/></g><rect x="105" y="30.34" width="1.6" height="7.32" fill="rgba(255,255,255,.8)"/>`;
+const ART={
+infiltrado:`<svg viewBox="0 0 300 150"><g stroke="rgba(255,255,255,.5)" fill="none" stroke-width="1.5"><rect x="10" y="10" width="280" height="130"/><line x1="150" y1="10" x2="150" y2="140"/><circle cx="150" cy="75" r="22"/></g>${[[40,75],[85,35],[85,75],[85,115],[135,50],[135,100],[190,40],[190,110],[235,75],[205,75]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="9" fill="#75aadb" stroke="#fff" stroke-width="2.5"/>`).join('')}<circle cx="250" cy="35" r="13" fill="#ef4b4b" stroke="#fff" stroke-width="3"/><text x="250" y="41" text-anchor="middle" font-family="Anton" font-size="17" fill="#fff">?</text></svg>`,
+jugada:`<svg viewBox="0 0 300 150"><g stroke="rgba(255,255,255,.5)" fill="none" stroke-width="1.5"><rect x="10" y="10" width="280" height="130"/><rect x="240" y="40" width="50" height="70"/></g><path d="M40 115 L95 90 L130 100 L175 70 L215 80 L250 65" fill="none" stroke="#ffd23f" stroke-width="3" stroke-dasharray="7 6"/><path d="M250 65 L290 75" stroke="#ef4b4b" stroke-width="4"/>${[[40,115],[95,90],[130,100],[175,70],[215,80],[250,65]].map(([x,y])=>`<circle cx="${x}" cy="${y}" r="6" fill="#f2efe4"/>`).join('')}</svg>`,
+linea:`<svg viewBox="0 0 300 150"><line x1="25" y1="78" x2="275" y2="78" stroke="#f2efe4" stroke-width="3"/>${[45,100,150,200,255].map((x,i)=>`<circle cx="${x}" cy="78" r="9" fill="${i==2?'#ffd23f':'#f2efe4'}"/><rect x="${x-22}" y="${i%2?96:30}" width="44" height="26" rx="5" fill="rgba(5,20,12,.6)" stroke="rgba(255,255,255,.4)"/><text x="${x}" y="${i%2?114:48}" text-anchor="middle" font-family="Anton" font-size="13" fill="#f2efe4">${[1950,1978,1986,2014,2022][i]}</text>`).join('')}</svg>`};
+
+// ---------- INICIO ----------
+function home(){
+  const P=ACC.P,d=g=>dailyDone(g);
+  app.innerHTML=`<h1>La Pizarra</h1><p class="lead">Tres juegos de fútbol para los que se acuerdan de todo. Cada día hay un desafío nuevo, igual para todos, para comparar con amigos.</p>
+  ${P?`<a class="hello" href="#perfil"><span class="av big2">${esc(P.apodo.slice(0,1).toUpperCase())}</span><span><b>${esc(P.apodo)}</b><br>Nivel ${nivel(P.pts).i} · ${nivel(P.pts).n} · ${P.pts} puntos</span></a>`:(ACC.mode==='cargando'?'':`<div class="cta"><p>Creá tu usuario para guardar tus puntos, tu nivel y tus récords.</p><a class="btn pri" href="#perfil">Crear usuario</a></div>`)}
+  <div class="cards">
+   <a class="card" href="#infiltrado">${ART.infiltrado}<div><h3>El Infiltrado</h3><p>Un once histórico con un jugador que no fue titular ese partido. Encontralo antes de quedarte sin vidas.</p><p class="go">${d('inf')!=null?`Desafío de hoy: ${d('inf')} pts`:`${M.length} partidos · Jugar`}</p></div></a>
+   <a class="card" href="#jugada">${ART.jugada}<div><h3>La Jugada</h3><p>Mirá el recorrido de la pelota de un gol histórico, sin nombres, y adiviná de quién es.</p><p class="go">${d('jg')!=null?`Desafío de hoy: ${d('jg')} pts`:`${G.length} goles · Jugar`}</p></div></a>
+   <a class="card" href="#linea">${ART.linea}<div><h3>Línea del tiempo</h3><p>Cinco momentos del fútbol mezclados. Ordenalos del más viejo al más nuevo.</p><p class="go">${d('ln')!=null?`Desafío de hoy: ${d('ln')} pts`:`${E.length} momentos · Jugar`}</p></div></a>
+  </div>`;
+}
+function intro(title,lead,rules,art,modes,game){
+  const dd=dailyDone(game);
+  app.innerHTML=`<div class="intro"><div><h2>${title}</h2><p class="lead">${lead}</p><ul>${rules.map(x=>`<li>${x}</li>`).join('')}</ul></div><div class="card" style="pointer-events:none">${art}</div></div>
+  <div class="modes">${modes.map(m=>`<button class="mode" data-a="${m.a}" data-v="${m.v}"><b>${m.n}${m.v==='diario'&&dd!=null?` · ya jugado: ${dd} pts`:''}</b><span>${m.v==='diario'&&dd!=null?'Podés repetirlo, pero ya no suma puntos.':m.d}</span></button>`).join('')}</div>`;
+}
+
+// ---------- PERFIL ----------
+const clubSel=(sel)=>`<select id="club" name="club">${CLUBES.map(c=>`<option ${sel===c?'selected':''}>${esc(c)}</option>`).join('')}</select>`;
+function perfil(){
+  const P=ACC.P;
+  if(ACC.mode==='cargando'){app.innerHTML='<p class="info">Cargando tu usuario…</p>';return}
+  if(!P){app.innerHTML=`<div class="grid2 auth">
+    <form id="freg" class="box form"><h2>Crear usuario</h2><p class="info">Elegí un nombre de usuario. Te vamos a dar una palabra clave para que entres desde cualquier celular o compu.</p>
+      <label for="rnom">Nombre de usuario</label><input id="rnom" name="nombre" maxlength="16" minlength="3" required autocomplete="username" placeholder="Por ejemplo: ElPibeDeOro" pattern="[A-Za-z0-9ÁÉÍÓÚáéíóúÑñÜü_.\\-]{3,16}" title="Entre 3 y 16 letras o números, sin espacios">
+      <label for="club">Club favorito</label>${clubSel('Otro')}
+      <p class="ferr" role="alert"></p><button class="btn pri" type="submit">Crear usuario</button></form>
+    <form id="flog" class="box form"><h2>Ya tengo usuario</h2><p class="info">Entrá con tu nombre de usuario y tu palabra clave.</p>
+      <label for="lnom">Nombre de usuario</label><input id="lnom" name="nombre" maxlength="16" required autocomplete="username">
+      <label for="lcla">Palabra clave</label><input id="lcla" name="clave" required autocomplete="current-password" placeholder="por ejemplo: gambeta-tribuna-27" autocapitalize="off" spellcheck="false">
+      <p class="ferr" role="alert"></p><button class="btn pri" type="submit">Entrar</button></form></div>`;return}
+  const nv=nivel(P.pts),pct=nv.next?Math.round((P.pts-nv.base)/(nv.next-nv.base)*100):100;
+  const days=Array.from({length:7},(_,i)=>{const d=new Date(D);d.setDate(d.getDate()-6+i);const k=dkey(d),r=P.dias[k]||{};const t=(r.inf||0)+(r.jg||0)+(r.ln||0);return `<div class="day ${k===today?'hoy':''}"><span>${['dom','lun','mar','mié','jue','vie','sáb'][d.getDay()]}</span><i class="${r.inf!=null?'on':''}"></i><i class="${r.jg!=null?'on':''}"></i><i class="${r.ln!=null?'on':''}"></i><b>${Object.keys(r).length?t:'–'}</b></div>`}).join('');
+  const rows=[['El Infiltrado','inf'],['La Jugada','jg'],['Línea del tiempo','ln']].map(([n,k])=>`<tr><td>${n}</td><td class="num">${P.jug[k]}</td><td class="num">${P.best[k]}</td><td class="num">${P.dias[today]?.[k]!=null?P.dias[today][k]:'–'}</td></tr>`).join('');
+  app.innerHTML=`${ACC.nueva?`<div class="box clave"><p class="info">¡Listo, ${esc(P.apodo)}! Esta es tu palabra clave. Anotala o sacale captura: la vas a necesitar para entrar desde otro celular o compu.</p><div class="kw" id="kw">${esc(ACC.nueva)}</div><div class="row"><button class="btn pri" data-a="copy-clave">Copiar palabra clave</button><button class="btn" data-a="clave-ok">Ya la anoté</button></div></div>`:''}
+  <div class="grid2 prof"><div class="side">
+   <div class="box pcard"><span class="av huge">${esc(P.apodo.slice(0,1).toUpperCase())}</span><div><h2>${esc(P.apodo)}</h2><p class="info">Hincha de ${esc(P.club)} · desde el ${fdate(P.creado)}</p></div></div>
+   <div class="box"><p class="info">Nivel ${nv.i}</p><div class="big">${esc(nv.n)}</div><div class="meter"><i style="width:${pct}%"></i></div><p class="info"><b>${P.pts}</b> puntos${nv.next?` · faltan ${nv.next-P.pts} para ${esc(NIV[nv.i][1])}`:' · nivel máximo'}</p></div>
+   <div class="box"><h3>Tus números</h3><table class="tb"><thead><tr><th>Juego</th><th class="num">Partidas</th><th class="num">Récord</th><th class="num">Hoy</th></tr></thead><tbody>${rows}</tbody></table><p class="info" style="margin-top:10px">Mejor racha en El Infiltrado: <b>${P.best.racha}</b> partido${P.best.racha==1?'':'s'}</p></div>
+   <div class="box"><h3>Últimos 7 días</h3><div class="week">${days}</div><p class="fine">Cada puntito es un desafío del día: Infiltrado, Jugada y Línea.</p></div>
+  </div><div class="side">
+   <div class="box"><h3>Ranking</h3><div id="rk"><p class="info">Cargando ranking…</p></div></div>
+   <div class="box"><h3>Tu cuenta</h3><p class="info">Para entrar desde otro dispositivo usá tu nombre <b>${esc(ACC.ses?ACC.ses.nombre:P.apodo)}</b> y tu palabra clave.</p><div class="row" style="margin-top:10px"><button class="btn" data-a="ver-clave">Ver mi palabra clave</button><button class="btn" data-a="logout">Cerrar sesión</button></div><p class="kwline" id="kwline"></p>
+    <form id="fclub" class="form"><label for="club">Club favorito</label>${clubSel(P.club)}<button class="btn" type="submit">Guardar club</button></form></div>
+   ${ACC.online?'':'<p class="fine">Sin conexión con el servidor: tu progreso se guarda en este dispositivo y se sube cuando vuelva la conexión.</p>'}
+  </div></div>`;
+  loadRank();
+}
+async function loadRank(){
+  const el=()=>document.getElementById('rk');
+  try{const r=await api('ranking');if(!el())return;
+    if(!r.ranking.length){el().innerHTML='<p class="info">Todavía no hay nadie en el ranking.</p>';return}
+    const me=ACC.P&&ACC.P.apodo.toLowerCase();
+    el().innerHTML=`<ol class="rank">${r.ranking.map((x,i)=>`<li class="${String(x.nombre).toLowerCase()===me?'me2':''}"><span class="pos">${i+1}</span><span class="who"><b>${esc(String(x.nombre).slice(0,16))}</b><em>${esc(String(x.club||''))}</em></span><span class="num">${Number(x.pts)||0}</span></li>`).join('')}</ol><p class="fine">${Number(r.total)||0} jugador${Number(r.total)==1?'':'es'} registrado${Number(r.total)==1?'':'s'}.</p>`;
+  }catch(e){if(el())el().innerHTML='<p class="info">No se pudo cargar el ranking ahora.</p>'}
+}
+app.addEventListener('submit',async e=>{
+  const f=e.target;if(!['freg','flog','fclub'].includes(f.id))return;e.preventDefault();
+  const err=f.querySelector('.ferr'),btn=f.querySelector('button[type=submit]');if(err)err.textContent='';btn.disabled=true;
+  try{
+    if(f.id==='freg'){const r=await api('registro',{nombre:f.nombre.value.trim(),club:f.club.value,creado:today});
+      ACC.ses={nombre:r.nombre,clave:r.clave};st.set('sesion',ACC.ses);ACC.P=r.P;fixP();ACC.nueva=r.clave;
+      const pend=ACC.pend.splice(0);pend.forEach(p=>record(...p));save();paintMe();perfil();window.scrollTo(0,0);toast(`¡Bienvenido, ${r.nombre}!`);return}
+    if(f.id==='flog'){const ses={nombre:f.nombre.value.trim(),clave:f.clave.value.trim().toLowerCase()};const r=await api('login',ses);
+      ACC.ses={nombre:r.nombre,clave:ses.clave};st.set('sesion',ACC.ses);ACC.P=r.P;fixP();const pend=ACC.pend.splice(0);pend.forEach(p=>record(...p));st.set('perfil_cache',ACC.P);paintMe();perfil();toast(`¡Hola de nuevo, ${r.nombre}!`);return}
+    if(f.id==='fclub'){ACC.P.club=f.club.value;await save();perfil();toast('Club guardado');return}
+  }catch(x){if(err)err.textContent=x.message;else toast(x.message)}
+  btn.disabled=false;
+});
+
+// ---------- EL INFILTRADO ----------
+let IF=null;
+function infIntro(){intro('El Infiltrado',`En el once titular de un partido histórico hay un jugador que no fue titular ese día. Siempre es alguien que podría haber estado: del plantel o de esa época, y en su misma posición. Hay ${M.length} partidos.`,['Tocá al jugador que creés que es el infiltrado.','Si le pegás al primer intento son 100 puntos, al segundo 50 y al tercero 20.','Cada error te cuesta una vida. Las pistas restan 15 puntos.'],ART.infiltrado,[{a:'inf-mode',v:'diario',n:'Desafío del día',d:'5 partidos, los mismos para todos hoy.'},{a:'inf-mode',v:'racha',n:'Modo racha',d:'Partidos sin fin con 3 vidas en total. ¿Hasta dónde llegás?'},{a:'inf-mode',v:'pesadilla',n:'Modo pesadilla',d:'Hay 2 infiltrados por partido y 4 vidas. No sabés que hay otro hasta que encontrás el primero.'}],'inf')}
+function infStart(mode){const r=mode==='diario'?mul(hs('inf'+today)):Math.random;let q=shuf(M,r);if(mode!=='diario')q=unseenFirst(q,'inf');if(mode!=='racha')q=q.slice(0,5);IF={mode,q,k:0,score:0,res:[],glives:3,r,over:false};infNext()}
+function infNext(){
+  if(IF.mode==='racha'&&IF.k>0&&IF.k%IF.q.length===0)IF.q=shuf(IF.q);
+  const m=IF.q[IF.k%IF.q.length],two=IF.mode==='pesadilla',r=IF.mode==='diario'?IF.r:Math.random;
+  markSeen('inf',m.id);
+  const infs=two?m.inf:[m.inf[Math.floor(r()*2)]];
+  const L=m.l.split('|'),P=[];
+  L.forEach((ln,li)=>{const ns=ln.split(',');ns.forEach((n,j)=>P.push({n,z:li==0?0:li==1?1:li==L.length-1?3:2,x:(j+1)/(ns.length+1)*100,y:90-li*(76/(L.length-1)),s:''}))});
+  infs.forEach(f=>{const p=P.find(p=>p.n===f.o);p.real=f.o;p.n=f.i;p.inf=1;p.note=f.x||'Estaba en el plantel, pero no fue titular ese día.'});
+  IF.cur={m,P,lives:two?4:3,max:two?4:3,wrong:0,hints:[],left:infs.length,found:0,done:false,pts:0,msg:'',mc:''};
+  infRender();
+}
+const curLives=()=>IF.mode==='racha'?IF.glives:IF.cur.lives;
+function infPick(i){
+  const c=IF.cur,p=c.P[i];if(c.done||p.s)return;
+  if(p.inf){p.s='inf';c.found++;c.left--;c.pts+=IF.mode==='pesadilla'?Math.max(10,60-15*c.wrong):[100,50,20][Math.min(c.wrong,2)];
+    if(c.left===0)return infFinish(true);
+    c.msg='¡Lo agarraste! Pero ojo: hay otro infiltrado.';c.mc='good';
+  }else{p.s='ok';c.wrong++;if(IF.mode==='racha')IF.glives--;else c.lives--;
+    if(curLives()<=0)return infFinish(false);
+    c.msg=`${p.n} jugó ese partido. Te quedan ${curLives()} vida${curLives()==1?'':'s'}.`;c.mc='bad';
+  }
+  infRender();
+}
+function infFinish(win){
+  const c=IF.cur;c.done=true;c.P.forEach(p=>{if(p.inf&&!p.s)p.s='rev'});
+  c.pts=c.found?Math.max(5,c.pts-15*c.hints.length):0;IF.score+=c.pts;
+  IF.res.push(win&&c.wrong===0?'🟢':win?'🟡':'🔴');
+  c.msg=win?`¡Bien! +${c.pts} puntos.`:'Te quedaste sin vidas.';c.mc=win?'good':'bad';
+  if(IF.mode==='racha'&&!win)IF.over=true;
+  infRender();
+}
+function infHint(h){
+  const c=IF.cur;if(c.done||c.hints.includes(h))return;c.hints.push(h);
+  if(h==='tarjeta'){shuf(c.P.filter(p=>!p.inf&&!p.s)).slice(0,3).forEach(p=>p.s='yel');c.msg='Tarjeta amarilla: los 3 marcados en amarillo jugaron.';c.mc=''}
+  infRender();
+}
+function infNextBtn(){const fin=IF.mode==='racha'?IF.over:IF.k+1>=IF.q.length;if(fin)return infSummary();IF.k++;infNext()}
+function infSummary(){
+  const solved=IF.res.filter(x=>x!=='🔴').length;
+  const counted=record('inf',IF.score,{daily:IF.mode==='diario',racha:IF.mode==='racha'?solved:null});
+  const head=IF.mode==='racha'?`Racha: ${solved} partido${solved==1?'':'s'}`:`${IF.score} puntos`;
+  const txt=`La Pizarra · El Infiltrado${IF.mode==='diario'?' · '+today:IF.mode==='pesadilla'?' · Pesadilla':' · Racha'}\n${IF.res.join('')}  ${head}`;
+  IF.sum=`<div class="box" style="max-width:560px;margin:20px auto;text-align:center"><p class="info">Terminó el juego</p><div class="big">${esc(head)}</div><p style="font-size:28px;margin:10px 0">${IF.res.join(' ')}</p>${IF.mode==='racha'&&ACC.P?`<p class="info">Tu récord: <b>${ACC.P.best.racha}</b></p>`:''}${counted===false?'<p class="info">Ya habías jugado el desafío de hoy: esta vez no suma.</p>':''}${saveCta()}${shareBox(txt)}<div class="row" style="justify-content:center;margin-top:14px"><button class="btn" data-a="inf-mode" data-v="${IF.mode}">Jugar de nuevo</button><button class="btn" data-a="inf-intro">Cambiar modo</button></div></div>`;
+  app.innerHTML=IF.sum;
+}
+function infRender(){
+  if(IF.sum){app.innerHTML=IF.sum;return}
+  const c=IF.cur,m=c.m,L=curLives(),mx=IF.mode==='racha'?3:c.max;
+  const prog=IF.mode==='racha'?`Racha <b>${IF.res.filter(x=>x!=='🔴').length}</b>`:`Partido <b>${IF.k+1}/${IF.q.length}</b>`;
+  const zoneInf=c.P.find(p=>p.inf&&!p.s);
+  const H=[
+   {h:'tarjeta',ic:'',n:'Tarjeta amarilla',d:'Te marca 3 jugadores que sí jugaron.'},
+   {h:'resultado',ic:'r',n:'Resultado',d:c.hints.includes('resultado')?`${m.t}. Goles: ${m.g}.`:'Te muestra el resultado y los goleadores.'},
+   {h:'zona',ic:'z',n:'Zona',d:c.hints.includes('zona')?(zoneInf?`El infiltrado es ${ZN[zoneInf.z]}.`:'Ya los encontraste.'):'Te dice en qué línea está el infiltrado.'}];
+  app.innerHTML=`<div class="bar"><div class="score"><span>${prog}</span><span>Puntos <b>${IF.score}</b></span><span>Vidas ${lives(L,mx)}</span></div><button class="btn" data-a="inf-intro">Modos</button></div>
+  <div class="grid2"><div><div class="head"><small>${esc(m.s)}</small><h2>${esc(m.tm)}</h2></div>
+   <div class="pitch">${PITCH_V}${c.P.map((p,i)=>`<button class="pl ${p.s}" style="left:${p.x}%;top:${p.y}%;--c:${m.c}" data-a="inf-pick" data-v="${i}" aria-label="${esc(p.n)}"><span class="dot">${p.s==='ok'?'✓':p.s==='inf'||p.s==='rev'?'✗':''}</span><span class="nm">${esc(p.n)}</span></button>`).join('')}</div></div>
+   <div class="side"><div class="msg ${c.mc}" aria-live="polite">${esc(c.msg||(IF.mode==='pesadilla'?'¿Quién no fue titular en este partido? Puede haber más de uno.':'¿Quién no fue titular en este partido?'))}</div>
+    ${c.done?`<div class="box reveal"><h3>${esc(m.t)}</h3><p class="info">Goles: ${esc(m.g)}</p>${c.P.filter(p=>p.inf).map(p=>`<p><b>${esc(p.n)}</b> no fue titular: en su lugar jugó <b>${esc(p.real)}</b>. ${esc(p.note)}</p>`).join('')}<button class="btn pri" style="width:100%;margin-top:8px" data-a="inf-next">${(IF.mode==='racha'?IF.over:IF.k+1>=IF.q.length)?'Ver resultado final':'Siguiente partido'}</button></div>`
+    :`<div class="box"><h3>Pistas (−15 pts c/u)</h3><div class="hints">${H.map(x=>`<button class="hint" data-a="inf-hint" data-v="${x.h}" ${c.hints.includes(x.h)?'disabled':''}><i class="ic ${x.ic}"></i><span>${x.n}<em>${esc(x.d)}</em></span></button>`).join('')}</div></div>`}
+   </div></div>`;
+}
+
+// ---------- LA JUGADA ----------
+let JG=null;
+function jgIntro(){intro('La Jugada',`Ves el recorrido de la pelota de un gol histórico, sin nombres. ¿De quién es el gol? Hay ${G.length} goles.`,['Primero ves solo el final de la jugada.','Las pistas muestran la jugada entera, el torneo y el rival, pero cada una resta 30 puntos.','Elegí entre 4 opciones. Si acertás sin pistas, son 100 puntos.'],ART.jugada,[{a:'jg-mode',v:'diario',n:'Desafío del día',d:'5 goles, los mismos para todos hoy.'},{a:'jg-mode',v:'libre',n:'Modo libre',d:'10 goles, primero los que todavía no viste.'}],'jg')}
+function jgStart(mode){const r=mode==='diario'?mul(hs('jg'+today)):Math.random;let q=shuf(G,r);if(mode!=='diario')q=unseenFirst(q,'jg');q=q.slice(0,mode==='diario'?5:10);JG={mode,q,k:0,score:0,res:[],r};jgRound()}
+function jgRound(){
+  const g=JG.q[JG.k],r=JG.r;markSeen('jg',g.id);
+  const names=new Set([g.w]),pick=[];
+  for(const x of [...shuf(G.filter(x=>x.gr===g.gr),r),...shuf(G,r)]){if(pick.length>=3)break;if(!names.has(x.w)){names.add(x.w);pick.push(x)}}
+  JG.cur={g,h:0,done:false,pick:null,opts:shuf([g,...pick],r)};JG.sum=null;jgRender();
+}
+function jgSegs(){const g=JG.cur.g,all=g.p.slice(1).map((pt,i)=>({a:g.p[i],b:pt,t:pt[2]}));return JG.cur.h>=1||JG.cur.done||all.length<=2?all:all.slice(-2)}
+function jgRender(){
+  if(JG.sum){app.innerHTML=JG.sum;return}
+  const c=JG.cur,g=c.g,segs=jgSegs();
+  const segSvg=segs.map((s,i)=>`<line id="sg${i}" x1="${s.a[0]}" y1="${s.a[1]}" x2="${s.b[0]}" y2="${s.b[1]}" pathLength="1" stroke-dasharray="1" stroke-dashoffset="1" stroke="${s.t==='s'?'#ef4b4b':s.t==='c'?'#ffd23f':'#f2efe4'}" stroke-width="${s.t==='s'?1.1:.7}" stroke-linecap="round"/>`).join('');
+  const dots=segs.filter(s=>s.t!=='s').map(s=>`<circle cx="${s.b[0]}" cy="${s.b[1]}" r="1.3" fill="#f2efe4" stroke="#0c2418" stroke-width=".3"/>`).join('')+`<circle cx="${segs[0].a[0]}" cy="${segs[0].a[1]}" r="1.3" fill="#f2efe4" stroke="#0c2418" stroke-width=".3"/>`;
+  const H=[{h:1,n:'Ver la jugada entera',d:'Muestra la jugada desde el arranque.'},{h:2,n:'Torneo',d:c.h>=2||c.done?g.tor:'Te dice el torneo y el año.'},{h:3,n:'Rival',d:c.h>=3||c.done?g.riv:'Te dice contra quién fue.'}];
+  app.innerHTML=`<div class="bar"><div class="score"><span>Gol <b>${JG.k+1}/${JG.q.length}</b></span><span>Puntos <b>${JG.score}</b></span></div><button class="btn" data-a="jg-intro">Modos</button></div>
+  <div class="grid2 jg"><div><div class="head"><small>${c.h>=1||c.done?'Jugada completa':'Solo el final de la jugada'}</small><h2>¿De quién es este gol?</h2></div>
+  <div class="field"><svg viewBox="-1 -1 108 70" aria-label="Recorrido de la pelota">${PITCH_H}${segSvg}${dots}<circle id="ball" r="1.5" fill="#fff" stroke="#000" stroke-width=".3" cx="${segs[0].a[0]}" cy="${segs[0].a[1]}"/></svg></div>
+  <div class="row" style="margin:10px 0 4px;justify-content:space-between;align-items:center"><p class="info"><span style="color:#f2efe4">━</span> pase · <span style="color:#ffd23f">━</span> conducción · <span style="color:#ef4b4b">━</span> remate. El arco está a la derecha.</p><button class="btn" data-a="jg-replay">Repetir</button></div></div>
+  <div class="side"><div class="msg ${c.done?(c.pick===g?'good':'bad'):''}" aria-live="polite">${c.done?(c.pick===g?`¡Golazo! +${c.pts} puntos.`:`No. Era el gol de ${esc(g.w)}.`):'Elegí una opción:'}</div>
+   <div class="opts">${c.opts.map((o,i)=>`<button class="opt ${c.done?(o===g?'right':o===c.pick?'wrong':''):''}" data-a="jg-opt" data-v="${i}" ${c.done?'disabled':''}><kbd>${i+1}</kbd>${esc(o.w)}</button>`).join('')}</div>
+   ${c.done?`<div class="box reveal"><h3>${esc(g.w)} vs. ${esc(g.riv)}</h3><p class="info">${esc(g.tor)}</p><p>${esc(g.d)}</p><button class="btn pri" style="width:100%;margin-top:6px" data-a="jg-next">${JG.k+1>=JG.q.length?'Ver resultado final':'Siguiente gol'}</button></div>`:''}
+   <div class="box"><h3>Pistas (−30 pts c/u)</h3><div class="hints">${H.map(x=>`<button class="hint" data-a="jg-hint" data-v="${x.h}" ${c.h>=x.h||c.done||x.h!==c.h+1?'disabled':''}><i class="ic ${x.h==1?'z':x.h==2?'r':''}"></i><span>${x.n}<em>${esc(x.d)}</em></span></button>`).join('')}</div><p class="fine">Recorridos dibujados a mano, aproximados.</p></div><p class="fine kbd">Atajos: <kbd>1</kbd>–<kbd>4</kbd> para elegir, <kbd>Enter</kbd> para seguir, <kbd>R</kbd> para repetir.</p></div></div>`;
+  jgPlay();
+}
+function jgPlay(){
+  cancelAnimationFrame(anim);const ball=document.getElementById('ball');if(!ball)return;const segs=jgSegs();
+  const len=s=>Math.hypot(s.b[0]-s.a[0],s.b[1]-s.a[1]);
+  const dur=segs.map(s=>Math.max(260,len(s)*(s.t==='c'?55:s.t==='s'?10:20)));const tot=dur.reduce((a,b)=>a+b,0);
+  const els=segs.map((_,i)=>document.getElementById('sg'+i));
+  if(matchMedia('(prefers-reduced-motion: reduce)').matches){els.forEach(e=>e.setAttribute('stroke-dashoffset',0));const l=segs[segs.length-1].b;ball.setAttribute('cx',l[0]);ball.setAttribute('cy',l[1]);return}
+  let t0=null;const step=ts=>{if(!document.body.contains(ball))return;if(t0===null)t0=ts;let t=ts-t0;if(t>tot+1400){t0=ts;t=0}
+    let acc=0;segs.forEach((s,i)=>{const p=Math.min(1,Math.max(0,(t-acc)/dur[i]));els[i].setAttribute('stroke-dashoffset',1-p);if(t>=acc&&t<acc+dur[i]||(i===segs.length-1&&t>=tot)){ball.setAttribute('cx',s.a[0]+(s.b[0]-s.a[0])*p);ball.setAttribute('cy',s.a[1]+(s.b[1]-s.a[1])*p)}acc+=dur[i]});
+    anim=requestAnimationFrame(step)};
+  anim=requestAnimationFrame(step);
+}
+function jgOpt(i){const c=JG.cur;if(c.done)return;c.pick=c.opts[i];c.done=true;const ok=c.pick===c.g;c.pts=ok?Math.max(10,100-30*c.h):0;JG.score+=c.pts;JG.res.push(ok?(c.h===0?'🟢':'🟡'):'🔴');jgRender()}
+function jgNext(){if(JG.k+1>=JG.q.length)return jgSummary();JG.k++;jgRound()}
+function jgSummary(){
+  cancelAnimationFrame(anim);const counted=record('jg',JG.score,{daily:JG.mode==='diario'});
+  const txt=`La Pizarra · La Jugada${JG.mode==='diario'?' · '+today:''}\n${JG.res.join('')}  ${JG.score} pts`;
+  JG.sum=`<div class="box" style="max-width:560px;margin:20px auto;text-align:center"><p class="info">Terminó el juego</p><div class="big">${JG.score} pts</div><p style="font-size:28px;margin:10px 0">${JG.res.join(' ')}</p>${counted===false?'<p class="info">Ya habías jugado el desafío de hoy: esta vez no suma.</p>':''}${saveCta()}${shareBox(txt)}<div class="row" style="justify-content:center;margin-top:14px"><button class="btn" data-a="jg-mode" data-v="${JG.mode}">Jugar de nuevo</button><button class="btn" data-a="jg-intro">Cambiar modo</button></div></div>`;
+  app.innerHTML=JG.sum;
+}
+
+// ---------- LÍNEA DEL TIEMPO ----------
+let LN=null;
+const yr=e=>+e.d.slice(0,4);
+function clusterRound(){for(let k=0;k<60;k++){const a=E[Math.floor(Math.random()*E.length)];const near=E.filter(e=>Math.abs(yr(e)-yr(a))<=4);if(near.length>=5)return shuf(near).slice(0,5)}return shuf(E).slice(0,5)}
+function lnIntro(){intro('Línea del tiempo',`Te damos 5 momentos del fútbol mezclados. Ordenalos del más viejo (arriba) al más nuevo (abajo). Hay ${E.length} momentos.`,['Movelos con las flechas.','20 puntos por cada uno en su lugar y 20 de bonus si acertás todos.','En el modo difícil los 5 pasaron en la misma época.'],ART.linea,[{a:'ln-mode',v:'diario',n:'Desafío del día',d:'3 rondas, las mismas para todos hoy.'},{a:'ln-mode',v:'normal',n:'Modo normal',d:'5 rondas con momentos de cualquier época.'},{a:'ln-mode',v:'dificil',n:'Modo difícil',d:'5 rondas con momentos de la misma época.'}],'ln')}
+function lnStart(mode){
+  let R=[];if(mode==='diario'){const s=shuf(E,mul(hs('ln'+today)));R=[s.slice(0,5),s.slice(5,10),s.slice(10,15)]}
+  else if(mode==='normal'){const s=shuf(E);for(let i=0;i<5;i++)R.push(s.slice(i*5,i*5+5))}
+  else for(let i=0;i<5;i++)R.push(clusterRound());
+  LN={mode,R,k:0,score:0,res:[]};lnRound();
+}
+function lnRound(){const r=LN.mode==='diario'?mul(hs('lnr'+today+LN.k)):Math.random;let it=shuf(LN.R[LN.k],r);const ok=a=>a.every((e,i)=>!i||a[i-1].d<=e.d);let n=0;while(ok(it)&&n++<20)it=shuf(it);LN.cur={it,checked:false};LN.sum=null;lnRender()}
+function lnRender(){
+  if(LN.sum){app.innerHTML=LN.sum;return}
+  const c=LN.cur,sorted=c.it.slice().sort((a,b)=>a.d<b.d?-1:1);
+  app.innerHTML=`<div class="bar"><div class="score"><span>Ronda <b>${LN.k+1}/${LN.R.length}</b></span><span>Puntos <b>${LN.score}</b></span></div><button class="btn" data-a="ln-intro">Modos</button></div>
+  <div class="grid2"><div><div class="head"><small>${LN.mode==='dificil'?'Modo difícil':'Ordená cronológicamente'}</small><h2>¿Qué pasó primero?</h2></div>
+   <div class="tl-axis"><span>▲ Más viejo</span></div>
+   <ol class="tl">${c.it.map((e,i)=>{const good=c.checked&&sorted[i]===e;return `<li class="${c.checked?(good?'good':'bad'):''}"><span class="n">${i+1}</span><span class="t">${esc(e.t)}${c.checked?`<span class="d">${fdate(e.d)}${good?'':` · iba en el puesto ${sorted.indexOf(e)+1}`}</span>`:''}</span>${c.checked?'<span></span>':`<span class="mv"><button data-a="ln-up" data-v="${i}" ${i==0?'disabled':''} aria-label="Subir"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></button><button data-a="ln-down" data-v="${i}" ${i==c.it.length-1?'disabled':''} aria-label="Bajar"><svg width="16" height="16" viewBox="0 0 16 16"><path d="M3 6l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.2"/></svg></button></span>`}</li>`}).join('')}</ol>
+   <div class="tl-axis" style="margin-top:8px"><span>▼ Más nuevo</span></div></div>
+   <div class="side"><div class="msg ${c.checked?(c.pts>=100?'good':c.pts>=60?'':'bad'):''}" aria-live="polite">${c.checked?`${c.hits} de 5 en su lugar · +${c.pts} puntos`:'Cuando estés seguro, comprobá.'}</div>
+   ${c.checked?`<button class="btn pri" data-a="ln-next">${LN.k+1>=LN.R.length?'Ver resultado final':'Siguiente ronda'}</button>`:`<button class="btn pri" data-a="ln-check">Comprobar</button>`}<p class="fine kbd">Atajo: <kbd>Enter</kbd> para comprobar y seguir.</p></div></div>`;
+}
+function lnMove(i,d){const a=LN.cur.it,j=i+d;if(j<0||j>=a.length)return;[a[i],a[j]]=[a[j],a[i]];lnRender();const b=app.querySelector(`[data-a="ln-${d<0?'up':'down'}"][data-v="${j}"]`);if(b&&!b.disabled)b.focus()}
+function lnCheck(){const c=LN.cur,s=c.it.slice().sort((a,b)=>a.d<b.d?-1:1);c.hits=c.it.filter((e,i)=>s[i]===e).length;c.pts=c.hits*20+(c.hits===5?20:0);c.checked=true;LN.score+=c.pts;LN.res.push(c.hits===5?'🟢':c.hits>=3?'🟡':'🔴');lnRender()}
+function lnNext(){if(LN.k+1>=LN.R.length)return lnSummary();LN.k++;lnRound()}
+function lnSummary(){
+  const counted=record('ln',LN.score,{daily:LN.mode==='diario'});
+  const txt=`La Pizarra · Línea del tiempo${LN.mode==='diario'?' · '+today:LN.mode==='dificil'?' · Difícil':''}\n${LN.res.join('')}  ${LN.score} pts`;
+  LN.sum=`<div class="box" style="max-width:560px;margin:20px auto;text-align:center"><p class="info">Terminó el juego</p><div class="big">${LN.score} pts</div><p style="font-size:28px;margin:10px 0">${LN.res.join(' ')}</p>${counted===false?'<p class="info">Ya habías jugado el desafío de hoy: esta vez no suma.</p>':''}${saveCta()}${shareBox(txt)}<div class="row" style="justify-content:center;margin-top:14px"><button class="btn" data-a="ln-mode" data-v="${LN.mode}">Jugar de nuevo</button><button class="btn" data-a="ln-intro">Cambiar modo</button></div></div>`;
+  app.innerHTML=LN.sum;
+}
+
+// ---------- RUTEO Y EVENTOS ----------
+const ACT={
+ 'inf-intro':()=>{IF=null;infIntro()},'inf-mode':v=>infStart(v),'inf-pick':v=>infPick(+v),'inf-hint':v=>infHint(v),'inf-next':()=>infNextBtn(),
+ 'jg-intro':()=>{cancelAnimationFrame(anim);JG=null;jgIntro()},'jg-mode':v=>jgStart(v),'jg-hint':v=>{if(JG.cur.done)return;JG.cur.h=Math.max(JG.cur.h,+v);jgRender()},'jg-opt':v=>jgOpt(+v),'jg-next':()=>jgNext(),'jg-replay':()=>jgPlay(),
+ 'ln-intro':()=>{LN=null;lnIntro()},'ln-mode':v=>lnStart(v),'ln-up':v=>lnMove(+v,-1),'ln-down':v=>lnMove(+v,1),'ln-check':()=>lnCheck(),'ln-next':()=>lnNext(),
+ 'copy-clave':()=>{const t=ACC.nueva||'';try{navigator.clipboard.writeText(t).then(()=>toast('¡Copiada!'),()=>toast('Seleccioná la palabra y copiala'))}catch(e){toast('Seleccioná la palabra y copiala')}},
+ 'clave-ok':()=>{ACC.nueva=null;perfil()},
+ 'ver-clave':()=>{const el=document.getElementById('kwline');if(el&&ACC.ses)el.innerHTML=`Tu palabra clave es <b>${esc(ACC.ses.clave)}</b>`},
+ 'logout':()=>{logout();location.hash='#';route()},
+ 'copy':()=>{const t=document.getElementById('shtxt').textContent;try{navigator.clipboard.writeText(t).then(()=>toast('¡Copiado!'),()=>toast('Seleccioná el texto y copialo'))}catch(e){toast('Seleccioná el texto y copialo')}}
+};
+app.addEventListener('click',e=>{const b=e.target.closest('[data-a]');if(!b||b.disabled)return;const f=ACT[b.dataset.a];if(f)f(b.dataset.v)});
+const curState=h=>h==='infiltrado'?IF:h==='jugada'?JG:h==='linea'?LN:null;
+function route(keep){
+  cancelAnimationFrame(anim);const h=location.hash.slice(1);
+  document.querySelectorAll('#nav a').forEach(a=>{if(a.getAttribute('href')==='#'+h)a.setAttribute('aria-current','page');else a.removeAttribute('aria-current')});
+  if(h==='infiltrado'){IF?infRender():infIntro()}
+  else if(h==='jugada'){JG&&JG.cur?jgRender():jgIntro()}
+  else if(h==='linea'){LN?lnRender():lnIntro()}
+  else if(h==='perfil')perfil();
+  else home();
+  if(keep!==true)window.scrollTo(0,0);
+}
+window.addEventListener('hashchange',()=>route());
+document.addEventListener('keydown',e=>{
+  if(e.ctrlKey||e.metaKey||e.altKey)return;const h=location.hash.slice(1),tag=(e.target.tagName||'');
+  if(tag==='INPUT'||tag==='SELECT'||tag==='TEXTAREA')return;
+  const click=sel=>{const b=app.querySelector(sel);if(b&&!b.disabled){b.click();e.preventDefault();return true}};
+  if(h==='jugada'&&JG&&JG.cur){if(/^[1-4]$/.test(e.key))click(`[data-a="jg-opt"][data-v="${+e.key-1}"]`);else if(e.key.toLowerCase()==='r')click('[data-a="jg-replay"]');else if(e.key==='Enter'&&tag!=='BUTTON')click('[data-a="jg-next"]')}
+  else if(h==='linea'&&LN&&e.key==='Enter'&&tag!=='BUTTON'){click('[data-a="ln-check"]')||click('[data-a="ln-next"]')}
+  else if(h==='infiltrado'&&IF&&e.key==='Enter'&&tag!=='BUTTON')click('[data-a="inf-next"]');
+});
+paintMe();route();initAccount();
+}
+</script>
+</body>
+</html>
